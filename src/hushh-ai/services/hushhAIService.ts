@@ -374,25 +374,84 @@ export function onAuthChange(callback: (isLoggedIn: boolean) => void): () => voi
  */
 export async function signOut(): Promise<boolean> {
   if (!supabase) return false;
-  
+
+  // Clear profile cache
+  try {
+    sessionStorage.removeItem('hushh_ai_profile');
+  } catch (e) {
+    console.warn('Failed to clear profile cache:', e);
+  }
+
   const { error } = await supabase.auth.signOut();
   return !error;
 }
+
+const PROFILE_CACHE_KEY = 'hushh_ai_profile';
+const PROFILE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Get user email and avatar
  */
 export async function getUserProfile(): Promise<{ email: string; displayName: string | null; avatarUrl: string | null } | null> {
-  if (!supabase) return null;
-  
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  
-  return {
-    email: user.email || '',
-    displayName: user.user_metadata?.full_name || user.user_metadata?.name || null,
-    avatarUrl: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
-  };
+  if (!supabase) {
+    console.error('getUserProfile: Supabase client not initialized');
+    return null;
+  }
+
+  // Check cache first
+  try {
+    const cached = sessionStorage.getItem(PROFILE_CACHE_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      const age = Date.now() - parsed.timestamp;
+      if (age < PROFILE_CACHE_TTL) {
+        console.log('getUserProfile: Returning cached profile');
+        return parsed.data;
+      }
+    }
+  } catch (cacheError) {
+    console.warn('getUserProfile: Cache read error:', cacheError);
+  }
+
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser();
+
+    if (error) {
+      console.error('getUserProfile: Failed to get user from Supabase Auth:', error);
+      return null;
+    }
+
+    if (!user) {
+      console.error('getUserProfile: No authenticated user found');
+      return null;
+    }
+
+    // Validate email exists
+    if (!user.email) {
+      console.warn('getUserProfile: User missing email field');
+    }
+
+    const profile = {
+      email: user.email || 'Unknown',
+      displayName: user.user_metadata?.full_name || user.user_metadata?.name || null,
+      avatarUrl: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+    };
+
+    // Cache for next time
+    try {
+      sessionStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({
+        data: profile,
+        timestamp: Date.now(),
+      }));
+    } catch (cacheError) {
+      console.warn('getUserProfile: Cache write error:', cacheError);
+    }
+
+    return profile;
+  } catch (error) {
+    console.error('getUserProfile: Unexpected error:', error);
+    return null;
+  }
 }
 
 // ============================================

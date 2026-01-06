@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Flex, Text, Input, IconButton, VStack, HStack, Avatar, Spinner, useToast, useDisclosure, Menu, MenuButton, MenuList, MenuItem, Divider } from '@chakra-ui/react';
+import { Box, Flex, Text, Input, IconButton, VStack, HStack, Avatar, Spinner, useToast, useDisclosure, Menu, MenuButton, MenuList, MenuItem, Divider, Skeleton, Tooltip } from '@chakra-ui/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { THEME, BRANDING, LIMITS } from '../core/constants';
 import type { HushhChat, HushhMessage, MediaLimits, ChatState } from '../core/types';
@@ -42,14 +42,30 @@ export default function HushhAIPage() {
   });
   const [inputValue, setInputValue] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [userProfile, setUserProfile] = useState<{ email: string; displayName: string | null; avatarUrl: string | null } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ email: string; displayName: string | null; avatarUrl: string | null } | null | undefined>(undefined);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   
   // Delete account modal
-  const { isOpen: isDeleteModalOpen, onOpen: onOpenDeleteModal, onClose: onCloseDeleteModal } = useDisclosure();
+  const { isOpen: isDeleteModalOpen, onOpen: onOpenDeleteModalOriginal, onClose: onCloseDeleteModal } = useDisclosure();
+
+  // Wrap delete modal open with safety check
+  const onOpenDeleteModal = () => {
+    if (chatState.isStreaming || chatState.isSending) {
+      toast({
+        title: 'Please wait',
+        description: 'Cannot delete account during active AI response',
+        status: 'warning',
+        duration: 3000,
+      });
+      return;
+    }
+    onOpenDeleteModalOriginal();
+  };
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // ============================================
   // Effects
@@ -96,14 +112,39 @@ export default function HushhAIPage() {
       // Track product usage for analytics
       trackProductUsage(PRODUCTS.HUSHH_AI).catch(console.error);
     }
-    const [chatList, limits, profile] = await Promise.all([
+
+    // Load critical data first (parallel)
+    const [chatList, limits] = await Promise.all([
       service.getChats(),
       service.getMediaLimits(),
-      service.getUserProfile(),
     ]);
     setChats(chatList);
     setMediaLimits(limits);
-    setUserProfile(profile);
+
+    // Load profile separately with retry
+    loadUserProfile();
+  };
+
+  const loadUserProfile = async (retries = 3) => {
+    try {
+      const profile = await service.getUserProfile();
+      setUserProfile(profile);
+    } catch (error) {
+      console.error('Profile load failed:', error);
+      if (retries > 0) {
+        console.log(`Retrying profile fetch... (${retries} attempts left)`);
+        setTimeout(() => loadUserProfile(retries - 1), 2000);
+      } else {
+        // Set to null after all retries exhausted
+        setUserProfile(null);
+        toast({
+          title: 'Failed to load profile',
+          description: 'Some features may be limited',
+          status: 'warning',
+          duration: 5000,
+        });
+      }
+    }
   };
 
   const loadChat = async (chatId: string) => {
@@ -217,12 +258,17 @@ export default function HushhAIPage() {
   };
 
   const streamAIResponse = async (chatId: string, message: string, mediaUrls: string[], currentUserId: string | null) => {
+    // Create abort controller for this request
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       const supabaseUrl = config.SUPABASE_URL;
       const supabaseKey = config.SUPABASE_ANON_KEY;
-      
+
       const response = await fetch(`${supabaseUrl}/functions/v1/hushh-ai-chat`, {
         method: 'POST',
+        signal: controller.signal, // Add abort signal
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${supabaseKey}`,
@@ -271,14 +317,28 @@ export default function HushhAIPage() {
       setMediaLimits(limits);
 
     } catch (error) {
+      // Handle abort gracefully
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Streaming cancelled by user');
+        setChatState((prev) => ({
+          ...prev,
+          isSending: false,
+          isStreaming: false,
+          streamingContent: ''
+        }));
+        return;
+      }
+
       console.error('Streaming error:', error);
-      setChatState((prev) => ({ 
-        ...prev, 
+      setChatState((prev) => ({
+        ...prev,
         error: BRANDING.messages.error,
         isSending: false,
         isStreaming: false,
         streamingContent: '',
       }));
+    } finally {
+      abortControllerRef.current = null;
     }
   };
 
@@ -290,19 +350,63 @@ export default function HushhAIPage() {
   };
 
   const handleLogout = async () => {
-    const success = await service.signOut();
-    if (success) {
+    if (isLoggingOut) return; // Prevent double clicks
+
+    // Warn if unsent content
+    if (inputValue.trim() || selectedFiles.length > 0) {
+      const confirmed = window.confirm('You have unsent content. Continue logout?');
+      if (!confirmed) return;
+    }
+
+    setIsLoggingOut(true);
+
+    try {
+      // Cancel streaming if active
+      if (chatState.isStreaming && abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      // Clear local state BEFORE logout
+      setChats([]);
+      setMessages([]);
+      setCurrentChat(null);
+      setInputValue('');
+      setSelectedFiles([]);
+      setUserProfile(null);
+      setMediaLimits(null);
+      setChatState({
+        isTyping: false,
+        isSending: false,
+        isStreaming: false,
+        streamingContent: '',
+        error: null,
+      });
+
+      const success = await service.signOut();
+      if (!success) {
+        throw new Error('Sign out failed');
+      }
+
       navigate('/hushh-ai/login');
-    } else {
+    } catch (error) {
+      console.error('Logout error:', error);
       toast({
         title: 'Logout failed',
+        description: 'Please try again',
         status: 'error',
         duration: 3000,
       });
+    } finally {
+      setIsLoggingOut(false);
     }
   };
 
   const handleAccountDeleted = () => {
+    // Cancel streaming if active
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
     onCloseDeleteModal();
     navigate('/hushh-ai/login');
   };
@@ -445,69 +549,89 @@ export default function HushhAIPage() {
 
               {/* Profile Section */}
               <Divider borderColor={THEME.colors.border} />
-              <Menu placement="top-start">
-                <MenuButton
-                  as={Box}
-                  p={3}
-                  borderRadius={THEME.borderRadius.sm}
-                  _hover={{ bg: THEME.colors.sidebarHover }}
-                  cursor="pointer"
-                  transition={THEME.transitions.fast}
-                >
-                  <HStack spacing={3}>
-                    <Avatar 
-                      size="sm" 
-                      name={userProfile?.displayName || userProfile?.email || 'User'}
-                      src={userProfile?.avatarUrl || undefined}
-                      bg={THEME.colors.accent}
-                      color="white"
-                    />
-                    <VStack align="start" spacing={0} flex={1}>
-                      <Text 
-                        fontSize={THEME.fontSizes.sm} 
-                        fontWeight={THEME.fontWeights.medium}
-                        color={THEME.colors.textPrimary}
-                        noOfLines={1}
-                      >
-                        {userProfile?.displayName || 'User'}
-                      </Text>
-                      <Text 
-                        fontSize={THEME.fontSizes.xs} 
-                        color={THEME.colors.textSecondary}
-                        noOfLines={1}
-                      >
-                        {userProfile?.email || ''}
-                      </Text>
-                    </VStack>
-                    <ProfileMenuIcon />
-                  </HStack>
-                </MenuButton>
-                <MenuList 
-                  bg={THEME.colors.surface} 
-                  borderColor={THEME.colors.border}
-                  boxShadow={THEME.shadows.md}
-                  py={2}
-                >
-                  <MenuItem
-                    icon={<LogoutIcon />}
-                    onClick={handleLogout}
+              {userProfile === undefined ? (
+                // Loading state
+                <Box p={3}>
+                  <Skeleton height="48px" borderRadius={THEME.borderRadius.sm} />
+                </Box>
+              ) : userProfile === null ? (
+                // Error state
+                <Box p={3} bg="#FEE2E2" borderRadius={THEME.borderRadius.sm}>
+                  <Text fontSize={THEME.fontSizes.xs} color="#DC2626">
+                    Failed to load profile
+                  </Text>
+                </Box>
+              ) : (
+                // Loaded state
+                <Menu placement="top-start">
+                  <MenuButton
+                    as={Box}
+                    p={3}
+                    borderRadius={THEME.borderRadius.sm}
                     _hover={{ bg: THEME.colors.sidebarHover }}
-                    fontSize={THEME.fontSizes.sm}
-                    color={THEME.colors.textPrimary}
+                    cursor="pointer"
+                    transition={THEME.transitions.fast}
                   >
-                    Log Out
-                  </MenuItem>
-                  <MenuItem
-                    icon={<DeleteIcon />}
-                    onClick={onOpenDeleteModal}
-                    _hover={{ bg: '#FEE2E2' }}
-                    fontSize={THEME.fontSizes.sm}
-                    color="#DC2626"
+                    <HStack spacing={3}>
+                      <Avatar
+                        size="sm"
+                        name={userProfile.displayName || userProfile.email || 'User'}
+                        src={userProfile.avatarUrl || undefined}
+                        bg={THEME.colors.accent}
+                        color="white"
+                      />
+                      <VStack align="start" spacing={0} flex={1}>
+                        <Tooltip label={userProfile.displayName || 'User'} placement="top">
+                          <Text
+                            fontSize={THEME.fontSizes.sm}
+                            fontWeight={THEME.fontWeights.medium}
+                            color={THEME.colors.textPrimary}
+                            noOfLines={1}
+                          >
+                            {userProfile.displayName || 'User'}
+                          </Text>
+                        </Tooltip>
+                        <Tooltip label={userProfile.email || ''} placement="bottom">
+                          <Text
+                            fontSize={THEME.fontSizes.xs}
+                            color={THEME.colors.textSecondary}
+                            noOfLines={1}
+                          >
+                            {userProfile.email || ''}
+                          </Text>
+                        </Tooltip>
+                      </VStack>
+                      <ProfileMenuIcon />
+                    </HStack>
+                  </MenuButton>
+                  <MenuList
+                    bg={THEME.colors.surface}
+                    borderColor={THEME.colors.border}
+                    boxShadow={THEME.shadows.md}
+                    py={2}
                   >
-                    Delete Account
-                  </MenuItem>
-                </MenuList>
-              </Menu>
+                    <MenuItem
+                      icon={<LogoutIcon />}
+                      onClick={handleLogout}
+                      isDisabled={isLoggingOut}
+                      _hover={{ bg: THEME.colors.sidebarHover }}
+                      fontSize={THEME.fontSizes.sm}
+                      color={THEME.colors.textPrimary}
+                    >
+                      {isLoggingOut ? 'Logging out...' : 'Log Out'}
+                    </MenuItem>
+                    <MenuItem
+                      icon={<DeleteIcon />}
+                      onClick={onOpenDeleteModal}
+                      _hover={{ bg: '#FEE2E2' }}
+                      fontSize={THEME.fontSizes.sm}
+                      color="#DC2626"
+                    >
+                      Delete Account
+                    </MenuItem>
+                  </MenuList>
+                </Menu>
+              )}
             </VStack>
           </MotionBox>
         )}

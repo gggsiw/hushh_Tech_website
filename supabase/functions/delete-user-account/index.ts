@@ -159,9 +159,95 @@ Deno.serve(async (req) => {
       .from('members')
       .delete()
       .eq('user_id', userId)
-    
+
     if (membersError) {
       console.error('Error deleting members:', membersError)
+    }
+
+    // 11. Delete Hushh AI data (child to parent order)
+    console.log('Deleting Hushh AI data...')
+
+    // Get hushh_ai_user_id first
+    const { data: hushhAiUser } = await adminClient
+      .from('hushh_ai_users')
+      .select('id')
+      .eq('supabase_user_id', userId)
+      .single()
+
+    if (hushhAiUser) {
+      const hushhAiUserId = hushhAiUser.id
+
+      // Get all chat IDs for this user
+      const { data: userChats } = await adminClient
+        .from('hushh_ai_chats')
+        .select('id')
+        .eq('user_id', hushhAiUserId)
+
+      const chatIds = userChats?.map((c: any) => c.id) || []
+
+      // Delete messages (child of chats)
+      if (chatIds.length > 0) {
+        const { error: hushhMessagesError } = await adminClient
+          .from('hushh_ai_messages')
+          .delete()
+          .in('chat_id', chatIds)
+
+        if (hushhMessagesError) {
+          console.error('Error deleting Hushh AI messages:', hushhMessagesError)
+        }
+      }
+
+      // Delete chats
+      const { error: hushhChatsError } = await adminClient
+        .from('hushh_ai_chats')
+        .delete()
+        .eq('user_id', hushhAiUserId)
+
+      if (hushhChatsError) {
+        console.error('Error deleting Hushh AI chats:', hushhChatsError)
+      }
+
+      // Delete media limits
+      const { error: mediaLimitsError } = await adminClient
+        .from('hushh_ai_media_limits')
+        .delete()
+        .eq('user_id', hushhAiUserId)
+
+      if (mediaLimitsError) {
+        console.error('Error deleting media limits:', mediaLimitsError)
+      }
+
+      // Delete storage files (files stored under userId folder)
+      try {
+        const { data: files } = await adminClient.storage
+          .from('hushh-ai-media')
+          .list(userId)
+
+        if (files && files.length > 0) {
+          const filePaths = files.map((f: any) => `${userId}/${f.name}`)
+          const { error: storageError } = await adminClient.storage
+            .from('hushh-ai-media')
+            .remove(filePaths)
+
+          if (storageError) {
+            console.error('Error deleting Hushh AI media:', storageError)
+          }
+        }
+      } catch (storageErr) {
+        console.error('Error accessing Hushh AI storage:', storageErr)
+      }
+
+      // Delete user record
+      const { error: hushhUserError } = await adminClient
+        .from('hushh_ai_users')
+        .delete()
+        .eq('id', hushhAiUserId)
+
+      if (hushhUserError) {
+        console.error('Error deleting Hushh AI user:', hushhUserError)
+      }
+
+      console.log('Hushh AI data deleted successfully')
     }
 
     // Finally, delete the auth user using admin API

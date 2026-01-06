@@ -157,6 +157,15 @@ const DeleteAccountModal = ({
               <Text fontSize="sm" color="#6B7280">
                 • {t("deleteAccount.deleteItem4")}
               </Text>
+              <Text fontSize="sm" color="#6B7280">
+                • All your Hushh AI chats and conversations
+              </Text>
+              <Text fontSize="sm" color="#6B7280">
+                • All uploaded media files (images, documents)
+              </Text>
+              <Text fontSize="sm" color="#6B7280">
+                • Your AI chat history and preferences
+              </Text>
             </VStack>
 
             {/* Confirmation input */}
