@@ -21,3 +21,29 @@ port = 54323
 
 [functions.generate-investor-profile]
 verify_jwt = true
+
+# Auth Configuration - Fix redirect to hushhtech.com
+[auth]
+enabled = true
+site_url = "https://hushhtech.com"
+additional_redirect_urls = [
+  "https://hushhtech.com/auth/callback",
+  "https://hushhtech.com/auth/callback?redirect=/hushh-ai",
+  "https://hushhtech.com/**",
+  "https://www.hushhtech.com/**",
+  "ai.hushh.app://",
+  "ai.hushh.app://**",
+  "capacitor://localhost",
+  "http://localhost:3000/**",
+  "http://localhost:5173/**"
+]
+
+[auth.external.google]
+enabled = true
+client_id = "env(GOOGLE_CLIENT_ID)"
+secret = "env(GOOGLE_CLIENT_SECRET)"
+
+[auth.external.apple]
+enabled = true
+client_id = "env(APPLE_CLIENT_ID)"
+secret = "env(APPLE_CLIENT_SECRET)"
