@@ -2,7 +2,7 @@
  * Hushh AI Chat - Supabase Edge Function
  * Vertex AI integration with Gemini 2.0 Flash
  * Streaming response for real-time chat
- * Redis integration for rate limiting & caching
+ * Supabase integration for rate limiting & caching
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -18,7 +18,7 @@ import {
   hashQuery,
   saveStreamState,
   clearStreamState,
-} from './redis.ts';
+} from './supabase.ts';
 import { createCalendarEvent, formatEventResponse, CalendarEventResult } from './calendar.ts';
 
 // CORS headers
@@ -205,7 +205,7 @@ serve(async (req: Request) => {
     }
 
     // ============================================
-    // Redis: Rate Limiting (100 requests/minute)
+    // Supabase: Rate Limiting (100 requests/minute)
     // ============================================
     if (userId) {
       const rateLimit = await checkRateLimit(userId, 100, 60);
@@ -230,7 +230,7 @@ serve(async (req: Request) => {
     }
 
     // ============================================
-    // Redis: Check Media Upload Limit (20/day)
+    // Supabase: Check Media Upload Limit (20/day)
     // ============================================
     if (userId && mediaUrls.length > 0) {
       const mediaLimit = await checkMediaUploadLimit(userId);
@@ -253,7 +253,7 @@ serve(async (req: Request) => {
     }
 
     // ============================================
-    // Redis: Check Cache for Similar Query
+    // Supabase: Check Cache for Similar Query
     // ============================================
     const queryHash = hashQuery(message + chatId);
     const cachedResponse = await getCachedResponse(queryHash);
@@ -271,7 +271,7 @@ serve(async (req: Request) => {
     }
 
     // ============================================
-    // Redis: Get Cached Context or Use Provided History
+    // Supabase: Get Cached Context or Use Provided History
     // ============================================
     let conversationHistory = history;
     if (chatId && history.length === 0) {
@@ -383,7 +383,7 @@ serve(async (req: Request) => {
     const response = await callVertexAI(accessToken, contents, selectedModel);
 
     // ============================================
-    // Redis: Wrap stream to cache response & update context
+    // Supabase: Wrap stream to cache response & update context
     // ============================================
     const reader = response.body?.getReader();
     const encoder = new TextEncoder();
@@ -415,14 +415,14 @@ serve(async (req: Request) => {
         }
 
         // ============================================
-        // Redis: Cache completed response
+        // Supabase: Cache completed response
         // ============================================
         if (fullResponse && mediaUrls.length === 0) {
           await cacheResponse(queryHash, fullResponse, 1800); // 30 min cache
         }
 
         // ============================================
-        // Redis: Update cached context
+        // Supabase: Update cached context
         // ============================================
         if (chatId) {
           const updatedHistory = [
