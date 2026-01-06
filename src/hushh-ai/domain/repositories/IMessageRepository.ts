@@ -2,7 +2,7 @@
  * Message Repository Interface
  * Defines the contract for message data operations
  */
-import { Message, MessageRole } from '../entities';
+import { Message, MessageRole, MessageMetadata } from '../entities';
 
 export interface IMessageRepository {
   /**
@@ -22,7 +22,8 @@ export interface IMessageRepository {
     chatId: string,
     role: MessageRole,
     content: string,
-    mediaUrls?: string[]
+    mediaUrls?: string[],
+    metadata?: MessageMetadata
   ): Promise<Message>;
 
   /**

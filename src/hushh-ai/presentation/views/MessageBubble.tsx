@@ -6,6 +6,7 @@ import React from 'react';
 import { Flex, Box, VStack } from '@chakra-ui/react';
 import { Message } from '../../domain/entities';
 import { MessageBubbleMarkdown } from './MessageBubbleMarkdown';
+import { CalendarEventCard } from '../components/CalendarEventCard';
 import { THEME } from '../../core/constants';
 
 interface MessageBubbleProps {
@@ -17,7 +18,7 @@ export const MessageBubble = React.memo(({ message, isStreaming = false }: Messa
   const isUser = message.isFromUser();
 
   return (
-    <Flex justify={isUser ? 'flex-end' : 'flex-start'}>
+    <Flex justify={isUser ? 'flex-end' : 'flex-start'} direction="column" align={isUser ? 'flex-end' : 'flex-start'}>
       <Box
         maxW="70%"
         p={4}
@@ -41,6 +42,13 @@ export const MessageBubble = React.memo(({ message, isStreaming = false }: Messa
           isStreaming={isStreaming}
         />
       </Box>
+
+      {/* Calendar Event Card */}
+      {message.hasCalendarEvent() && message.metadata?.calendarEvent && (
+        <Box mt={2}>
+          <CalendarEventCard event={message.metadata.calendarEvent} />
+        </Box>
+      )}
     </Flex>
   );
 }, (prevProps, nextProps) => {
@@ -48,7 +56,8 @@ export const MessageBubble = React.memo(({ message, isStreaming = false }: Messa
   return (
     prevProps.message.id === nextProps.message.id &&
     prevProps.message.content === nextProps.message.content &&
-    prevProps.isStreaming === nextProps.isStreaming
+    prevProps.isStreaming === nextProps.isStreaming &&
+    prevProps.message.metadata?.calendarEvent?.id === nextProps.message.metadata?.calendarEvent?.id
   );
 });
 

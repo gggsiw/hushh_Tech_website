@@ -3,7 +3,7 @@
  * Implements IMessageRepository using Supabase data source
  */
 import { IMessageRepository } from '../../domain/repositories';
-import { Message, MessageRole } from '../../domain/entities';
+import { Message, MessageRole, MessageMetadata } from '../../domain/entities';
 import { SupabaseMessageDataSource } from '../datasources';
 import { messageMapper } from '../models/mappers';
 import { retryWithBackoff } from '../../core/utils';
@@ -29,10 +29,11 @@ export class MessageRepositoryImpl implements IMessageRepository {
     chatId: string,
     role: MessageRole,
     content: string,
-    mediaUrls?: string[]
+    mediaUrls?: string[],
+    metadata?: MessageMetadata
   ): Promise<Message> {
     const dto = await retryWithBackoff(() =>
-      this.dataSource.add(chatId, role, content, mediaUrls || [])
+      this.dataSource.add(chatId, role, content, mediaUrls || [], metadata)
     );
     return messageMapper.toDomain(dto);
   }

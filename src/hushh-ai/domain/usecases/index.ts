@@ -19,3 +19,6 @@ export { GetCurrentUserUseCase } from './user/GetCurrentUserUseCase';
 
 // Media use cases
 export { UploadMediaUseCase } from './media/UploadMediaUseCase';
+
+// Calendar use cases
+export { HandleCalendarRequestUseCase } from './calendar/HandleCalendarRequestUseCase';

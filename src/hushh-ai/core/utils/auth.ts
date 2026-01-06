@@ -23,6 +23,7 @@ export async function hushhAIGoogleSignIn() {
       provider: 'google',
       options: {
         redirectTo,
+        scopes: 'email profile openid',
         queryParams: { access_type: 'offline', prompt: 'consent' },
       },
     });
@@ -63,7 +64,6 @@ export async function hushhAIAppleSignIn() {
       provider: 'apple',
       options: {
         redirectTo,
-        flowType: 'pkce',
         scopes: 'name email',
       },
     });

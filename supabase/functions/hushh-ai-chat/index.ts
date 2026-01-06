@@ -19,6 +19,7 @@ import {
   saveStreamState,
   clearStreamState,
 } from './redis.ts';
+import { createCalendarEvent, formatEventResponse, CalendarEventResult } from './calendar.ts';
 
 // CORS headers
 const corsHeaders = {
@@ -30,6 +31,9 @@ const corsHeaders = {
 // GCP Configuration
 const GCP_PROJECT = 'hushone-app';
 const GCP_LOCATION = 'us-central1';
+
+// Calendar API Configuration
+const CALENDAR_API_URL = 'https://hushh-calendar-api-yxfa6ba3aq-uc.a.run.app';
 
 // Available AI Models (white-labeled as Hushh AI variants)
 // All use Gemini 2.0 Flash - differentiated by temperature & tokens
@@ -71,19 +75,79 @@ const AVAILABLE_MODELS = {
 type ModelKey = keyof typeof AVAILABLE_MODELS;
 const DEFAULT_MODEL: ModelKey = 'flash';
 
-// System prompt for Hushh AI
-const SYSTEM_PROMPT = `You are Hushh, a helpful and friendly AI assistant. You are:
+// System prompt for Hushh AI with Calendar capabilities
+const SYSTEM_PROMPT = `You are Hushh, a helpful and friendly AI assistant with CALENDAR SCHEDULING capabilities. You are:
 - Warm, conversational, and empathetic
 - Clear and concise in your explanations
 - Honest about limitations
 - Helpful with a wide range of tasks including writing, analysis, coding, and general questions
+- ABLE TO SCHEDULE MEETINGS AND CALENDAR EVENTS
+
+CALENDAR CAPABILITIES:
+When users ask to schedule meetings, book appointments, or create calendar events, you CAN help them. Here's how:
+1. Parse the meeting details from their request (attendees, date, time, title)
+2. Confirm the details with the user
+3. The system will create the event using the Calendar API
+
+For calendar requests, extract and confirm:
+- Meeting title/description
+- Date and time
+- Attendees (email addresses)
+- Duration (default 30 min if not specified)
+
+Example responses for calendar requests:
+- "I'll schedule a meeting with [email] for [date/time]. The meeting will be about [title]. Should I proceed?"
+- "Got it! I'm creating a calendar event: [title] on [date] at [time] with [attendee]. Is this correct?"
 
 Guidelines:
 - Never mention that you are powered by Gemini, Google, or any specific AI model
 - Always refer to yourself as "Hushh" or "Hushh AI"
 - Be helpful and maintain a positive, supportive tone
 - Format responses with proper markdown when appropriate
-- Keep responses focused and relevant`;
+- Keep responses focused and relevant
+- When users want to schedule something, actively help them do it`;
+
+// Keywords to detect calendar-related intents
+const CALENDAR_KEYWORDS = [
+  'schedule', 'meeting', 'appointment', 'calendar', 'book', 'event',
+  'meet with', 'meet', 'call with', 'call', 'tomorrow', 'next week',
+  'pm', 'am', '@', 'remind', 'reminder'
+];
+
+/**
+ * Check if message has calendar intent
+ */
+function hasCalendarIntent(message: string): boolean {
+  const lowerMessage = message.toLowerCase();
+  return CALENDAR_KEYWORDS.some(keyword => lowerMessage.includes(keyword));
+}
+
+/**
+ * Call Calendar API to parse natural language
+ */
+async function parseCalendarRequest(text: string): Promise<{ success: boolean; event?: object; error?: string }> {
+  try {
+    const response = await fetch(`${CALENDAR_API_URL}/api/v1/parse`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ text }),
+    });
+    
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('Calendar API parse error:', error);
+      return { success: false, error };
+    }
+    
+    const data = await response.json();
+    return { success: true, event: data };
+  } catch (error) {
+    console.error('Calendar API error:', error);
+    return { success: false, error: String(error) };
+  }
+}
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -219,6 +283,61 @@ serve(async (req: Request) => {
 
     // Track usage
     await trackUsage('chat_request');
+
+    // ============================================
+    // Calendar Scheduling: Check for Calendar Intent
+    // ============================================
+    if (hasCalendarIntent(message)) {
+      // Extract organizer email from userId or use default
+      // For now, we'll need the user's email from the request
+      // The user needs to be a @hushh.ai domain user
+      const organizerEmail = userId?.includes('@') ? userId : 'ankit@hushh.ai';
+      
+      console.log('Calendar intent detected! Message:', message);
+      console.log('Organizer email:', organizerEmail);
+      
+      // Create the calendar event
+      const calendarResult = await createCalendarEvent({
+        message,
+        organizerEmail,
+      });
+      
+      // Format the response
+      const calendarResponse = formatEventResponse(calendarResult);
+      
+      // Track calendar event creation
+      await trackUsage('calendar_event_created');
+      
+      // Cache the response
+      if (chatId) {
+        const updatedHistory = [
+          ...conversationHistory,
+          { role: 'user' as const, content: message },
+          { role: 'assistant' as const, content: calendarResponse },
+        ].slice(-20);
+        
+        await cacheContext(chatId, updatedHistory, 3600);
+      }
+      
+      // Return the calendar response
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(calendarResponse));
+          controller.close();
+        },
+      });
+      
+      return new Response(stream, {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'text/plain; charset=utf-8',
+          'X-Calendar-Event': calendarResult.success ? 'created' : 'failed',
+          'X-Event-Id': calendarResult.eventId || '',
+          'X-Meet-Link': calendarResult.meetLink || '',
+        },
+      });
+    }
 
     // Get access token for Vertex AI
     let accessToken: string | null = null;

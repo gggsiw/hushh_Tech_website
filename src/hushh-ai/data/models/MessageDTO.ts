@@ -8,5 +8,6 @@ export interface MessageDTO {
   role: 'user' | 'assistant';
   content: string;
   media_urls: string[];
+  metadata?: Record<string, unknown> | null;
   created_at: string;
 }

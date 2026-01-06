@@ -13,6 +13,7 @@ import {
   SupabaseMediaDataSource,
   VertexAIDataSource,
 } from '../data/datasources';
+import { CalendarAPIDataSource } from '../data/datasources/CalendarAPIDataSource';
 
 // Repository Implementations
 import {
@@ -33,6 +34,7 @@ import {
   SaveAIResponseUseCase,
   GetCurrentUserUseCase,
   UploadMediaUseCase,
+  HandleCalendarRequestUseCase,
 } from '../domain/usecases';
 
 export class HushhAIContainer {
@@ -47,6 +49,7 @@ export class HushhAIContainer {
   private userDataSource: SupabaseUserDataSource;
   private mediaDataSource: SupabaseMediaDataSource;
   private aiDataSource: VertexAIDataSource;
+  private calendarDataSource: CalendarAPIDataSource;
 
   // Repositories
   private chatRepository: ChatRepositoryImpl;
@@ -64,6 +67,7 @@ export class HushhAIContainer {
   public saveAIResponseUseCase: SaveAIResponseUseCase;
   public getCurrentUserUseCase: GetCurrentUserUseCase;
   public uploadMediaUseCase: UploadMediaUseCase;
+  public handleCalendarRequestUseCase: HandleCalendarRequestUseCase;
 
   private constructor() {
     // Initialize Supabase client
@@ -78,6 +82,7 @@ export class HushhAIContainer {
       config.SUPABASE_URL,
       config.SUPABASE_ANON_KEY
     );
+    this.calendarDataSource = new CalendarAPIDataSource();
 
     // Initialize Repositories
     this.chatRepository = new ChatRepositoryImpl(this.chatDataSource);
@@ -98,6 +103,9 @@ export class HushhAIContainer {
     this.saveAIResponseUseCase = new SaveAIResponseUseCase(this.messageRepository);
     this.getCurrentUserUseCase = new GetCurrentUserUseCase(this.userRepository);
     this.uploadMediaUseCase = new UploadMediaUseCase(this.mediaRepository);
+    this.handleCalendarRequestUseCase = new HandleCalendarRequestUseCase(
+      this.calendarDataSource
+    );
   }
 
   public static getInstance(): HushhAIContainer {

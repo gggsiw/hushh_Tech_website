@@ -58,7 +58,8 @@ export class SupabaseMessageDataSource {
     chatId: string,
     role: 'user' | 'assistant',
     content: string,
-    mediaUrls: string[] = []
+    mediaUrls: string[] = [],
+    metadata?: Record<string, unknown>
   ): Promise<MessageDTO> {
     try {
       const { data, error } = await this.supabase
@@ -68,6 +69,7 @@ export class SupabaseMessageDataSource {
           role,
           content,
           media_urls: mediaUrls,
+          metadata: metadata || null,
         })
         .select()
         .single();

@@ -56,6 +56,7 @@ export default function HushhAIPage() {
     container.sendMessageUseCase,
     container.saveAIResponseUseCase,
     container.uploadMediaUseCase,
+    container.handleCalendarRequestUseCase,
     userId
   );
 

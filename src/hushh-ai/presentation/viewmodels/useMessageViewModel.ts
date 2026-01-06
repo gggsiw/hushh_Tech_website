@@ -9,9 +9,10 @@ import {
   SendMessageUseCase,
   SaveAIResponseUseCase,
   UploadMediaUseCase,
+  HandleCalendarRequestUseCase,
 } from '../../domain/usecases';
 import { useOptimisticUpdate } from '../hooks';
-import { logger, validateMessage } from '../../core/utils';
+import { logger, validateMessage, isCalendarIntent, getUserGoogleToken } from '../../core/utils';
 import { HushhAIError } from '../../core/errors';
 
 export interface MessageState {
@@ -27,6 +28,7 @@ export function useMessageViewModel(
   sendMessageUseCase: SendMessageUseCase,
   saveAIResponseUseCase: SaveAIResponseUseCase,
   uploadMediaUseCase: UploadMediaUseCase,
+  handleCalendarRequestUseCase: HandleCalendarRequestUseCase,
   userId: string | null
 ) {
   const [state, setState] = useState<MessageState>({
@@ -60,6 +62,113 @@ export function useMessageViewModel(
     [getMessagesUseCase, setItems]
   );
 
+  // Handle calendar-specific messages
+  const handleCalendarMessage = useCallback(
+    async (chatId: string, content: string, mediaUrls: string[]) => {
+      try {
+        // Create optimistic user message
+        const optimisticMessage = new Message(
+          `temp-${Date.now()}`,
+          chatId,
+          'user',
+          content,
+          mediaUrls,
+          new Date()
+        );
+
+        // Add optimistically
+        await addOptimistic(
+          optimisticMessage,
+          async () => {
+            // Get Google OAuth token
+            const googleToken = await getUserGoogleToken();
+
+            if (!googleToken) {
+              // No token - user needs to re-authenticate with calendar scopes
+              setState((prev) => ({
+                ...prev,
+                error: 'Calendar access not granted. Please sign in again to enable calendar features.',
+                isSending: false,
+              }));
+
+              // Save message to show the error state
+              const userMessage = await sendMessageUseCase.execute(
+                chatId,
+                content,
+                userId!,
+                mediaUrls
+              );
+
+              return userMessage.userMessage;
+            }
+
+            // Process calendar request
+            const calendarResult = await handleCalendarRequestUseCase.execute(
+              content,
+              googleToken
+            );
+
+            // Save user message first
+            const userMessage = await sendMessageUseCase.execute(
+              chatId,
+              content,
+              userId!,
+              mediaUrls
+            );
+
+            // Save AI response with calendar event metadata (if event was created)
+            await saveAIResponseUseCase.execute(
+              chatId,
+              calendarResult.response,
+              calendarResult.calendarEvent
+                ? { calendarEvent: calendarResult.calendarEvent }
+                : undefined
+            );
+
+            // Clear state
+            setState((prev) => ({
+              ...prev,
+              isSending: false,
+            }));
+
+            // Reload messages
+            await loadMessages(chatId);
+
+            return userMessage.userMessage;
+          },
+          (serverMessage) => {
+            logger.info(`Sent calendar message ${serverMessage.id}`);
+          },
+          (err) => {
+            logger.error('Failed to send calendar message', err);
+            const errorMessage =
+              err instanceof HushhAIError ? err.userMessage : 'Failed to process calendar request';
+            setState((prev) => ({
+              ...prev,
+              error: errorMessage,
+              isSending: false,
+            }));
+          }
+        );
+      } catch (err) {
+        logger.error('Error in handleCalendarMessage', err as Error);
+        setState((prev) => ({
+          ...prev,
+          error: 'Failed to process calendar request',
+          isSending: false,
+        }));
+      }
+    },
+    [
+      userId,
+      handleCalendarRequestUseCase,
+      sendMessageUseCase,
+      saveAIResponseUseCase,
+      addOptimistic,
+      loadMessages,
+    ]
+  );
+
   // Send message and stream AI response
   const sendMessage = useCallback(
     async (chatId: string, content: string, mediaFiles: File[] = []) => {
@@ -72,6 +181,10 @@ export function useMessageViewModel(
         // Validate message
         validateMessage(content);
 
+        // Check if this is a calendar-related message
+        const hasCalendarIntent = isCalendarIntent(content);
+        logger.info(`Calendar intent detected: ${hasCalendarIntent}`);
+
         // Upload media files
         const mediaUrls: string[] = [];
         for (const file of mediaFiles) {
@@ -83,6 +196,11 @@ export function useMessageViewModel(
             logger.error('Failed to upload media', err as Error);
             throw new Error('Failed to upload media file');
           }
+        }
+
+        // If calendar intent detected, handle it specially
+        if (hasCalendarIntent) {
+          return await handleCalendarMessage(chatId, content, mediaUrls);
         }
 
         // Create optimistic user message
