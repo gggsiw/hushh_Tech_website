@@ -20,6 +20,39 @@ import DeleteAccountModal from '../../components/DeleteAccountModal';
 const MotionBox = motion(Box);
 
 // ============================================
+// Storage Keys for Caching
+// ============================================
+const STORAGE_KEYS = {
+  AUTH_CACHED: 'hushh_ai_auth_cached',
+  CURRENT_CHAT_ID: 'hushh_ai_current_chat_id',
+  HAS_VISITED: 'hushh_ai_has_visited',
+};
+
+// Helper to check if already authenticated (fast path)
+const getIsCachedAuth = () => sessionStorage.getItem(STORAGE_KEYS.AUTH_CACHED) === 'true';
+const setIsCachedAuth = (value: boolean) => {
+  if (value) {
+    sessionStorage.setItem(STORAGE_KEYS.AUTH_CACHED, 'true');
+  } else {
+    sessionStorage.removeItem(STORAGE_KEYS.AUTH_CACHED);
+  }
+};
+
+// Helper to persist current chat ID
+const getPersistedChatId = () => localStorage.getItem(STORAGE_KEYS.CURRENT_CHAT_ID);
+const setPersistedChatId = (chatId: string | null) => {
+  if (chatId) {
+    localStorage.setItem(STORAGE_KEYS.CURRENT_CHAT_ID, chatId);
+  } else {
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_CHAT_ID);
+  }
+};
+
+// Check if this is the first visit (for loading screen)
+const isFirstVisit = () => !sessionStorage.getItem(STORAGE_KEYS.HAS_VISITED);
+const markAsVisited = () => sessionStorage.setItem(STORAGE_KEYS.HAS_VISITED, 'true');
+
+// ============================================
 // Main Component
 // ============================================
 
@@ -27,9 +60,9 @@ export default function HushhAIPage() {
   const navigate = useNavigate();
   const toast = useToast();
   
-  // State
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  // State - Smart loading: only show on first visit, not cached auth
+  const [isAuthenticated, setIsAuthenticated] = useState(getIsCachedAuth());
+  const [isLoading, setIsLoading] = useState(!getIsCachedAuth() && isFirstVisit());
   const [userId, setUserId] = useState<string | null>(null);
   const [chats, setChats] = useState<HushhChat[]>([]);
   const [currentChat, setCurrentChat] = useState<HushhChat | null>(null);
@@ -77,14 +110,44 @@ export default function HushhAIPage() {
   // Effects
   // ============================================
 
-  // Check auth on mount
+  // Check auth on mount - with caching for fast navigation
   useEffect(() => {
     const checkAuth = async () => {
+      // Fast path: if we have cached auth, skip loading and verify in background
+      const hasCachedAuth = getIsCachedAuth();
+      
+      if (hasCachedAuth) {
+        // Already authenticated from cache, load data in background
+        setIsAuthenticated(true);
+        setIsLoading(false);
+        markAsVisited();
+        
+        // Load data and verify auth in background
+        loadInitialData().catch(console.error);
+        
+        // Verify auth is still valid (non-blocking)
+        service.isAuthenticated().then((stillValid) => {
+          if (!stillValid) {
+            // Session expired, clear cache and redirect
+            setIsCachedAuth(false);
+            setPersistedChatId(null);
+            navigate('/hushh-ai/login');
+          }
+        });
+        return;
+      }
+      
+      // Slow path: first visit, need to authenticate
       const authenticated = await service.isAuthenticated();
       if (!authenticated) {
         navigate('/hushh-ai/login');
         return;
       }
+      
+      // Cache successful auth for future navigations
+      setIsCachedAuth(true);
+      markAsVisited();
+      
       setIsAuthenticated(true);
       await loadInitialData();
       setIsLoading(false);
@@ -95,6 +158,9 @@ export default function HushhAIPage() {
     // Subscribe to auth changes
     const unsubscribe = service.onAuthChange((loggedIn) => {
       if (!loggedIn) {
+        // Clear cache on logout
+        setIsCachedAuth(false);
+        setPersistedChatId(null);
         navigate('/hushh-ai/login');
       }
     });
@@ -126,6 +192,20 @@ export default function HushhAIPage() {
     ]);
     setChats(chatList);
     setMediaLimits(limits);
+
+    // Restore last active chat from localStorage (Bug #2 fix)
+    const persistedChatId = getPersistedChatId();
+    if (persistedChatId && chatList.length > 0) {
+      // Check if the persisted chat still exists
+      const chatExists = chatList.find(c => c.id === persistedChatId);
+      if (chatExists) {
+        // Load the persisted chat
+        await loadChat(persistedChatId);
+      } else {
+        // Chat was deleted, clear persisted ID
+        setPersistedChatId(null);
+      }
+    }
 
     // Load profile separately with retry
     loadUserProfile();
@@ -174,12 +254,16 @@ export default function HushhAIPage() {
       setChats((prev) => [chat, ...prev]);
       setCurrentChat(chat);
       setMessages([]);
+      // Persist the new chat ID (Bug #2 fix)
+      setPersistedChatId(chat.id);
       inputRef.current?.focus();
     }
   };
 
   const handleSelectChat = async (chat: HushhChat) => {
     setCurrentChat(chat);
+    // Persist the selected chat ID (Bug #2 fix)
+    setPersistedChatId(chat.id);
     await loadChat(chat.id);
   };
 
@@ -191,6 +275,8 @@ export default function HushhAIPage() {
       if (currentChat?.id === chatId) {
         setCurrentChat(null);
         setMessages([]);
+        // Clear persisted chat ID if deleted (Bug #2 fix)
+        setPersistedChatId(null);
       }
     }
   };
@@ -414,6 +500,11 @@ export default function HushhAIPage() {
         abortControllerRef.current.abort();
       }
 
+      // Clear all caches on logout (Bug fix #4)
+      setIsCachedAuth(false);
+      setPersistedChatId(null);
+      sessionStorage.removeItem(STORAGE_KEYS.HAS_VISITED);
+
       // Clear local state BEFORE logout
       setChats([]);
       setMessages([]);
@@ -454,6 +545,11 @@ export default function HushhAIPage() {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
+
+    // Clear all caches on account deletion (Bug fix #4)
+    setIsCachedAuth(false);
+    setPersistedChatId(null);
+    sessionStorage.removeItem(STORAGE_KEYS.HAS_VISITED);
 
     onCloseDeleteModal();
     navigate('/hushh-ai/login');
