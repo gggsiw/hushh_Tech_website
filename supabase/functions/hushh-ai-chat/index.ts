@@ -324,13 +324,14 @@ serve(async (req: Request) => {
     // Calendar Scheduling: Check for Calendar Intent
     // ============================================
     if (hasCalendarIntent(message)) {
-      // Extract organizer email from userId or use default
-      // For now, we'll need the user's email from the request
-      // The user needs to be a @hushh.ai domain user
-      const organizerEmail = userId?.includes('@') ? userId : 'ankit@hushh.ai';
+      // Extract organizer email from userId - MUST be @hushh.ai domain
+      // Service Account with Domain-Wide Delegation can ONLY impersonate @hushh.ai users
+      // Gmail/other domain users cannot be impersonated, so we fallback to default
+      const organizerEmail = userId?.endsWith('@hushh.ai') ? userId : 'ankit@hushh.ai';
       
       console.log('Calendar intent detected! Message:', message);
-      console.log('Organizer email:', organizerEmail);
+      console.log('User ID:', userId);
+      console.log('Organizer email (must be @hushh.ai):', organizerEmail);
 
       // Create the calendar event with exponential backoff retry logic
       const calendarResult = await retryWithBackoff(
