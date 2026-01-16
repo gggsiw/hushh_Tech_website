@@ -70,6 +70,24 @@ export const useEmailAuth = (): UseEmailAuthReturn => {
     initAuth();
   }, []);
 
+  // Visibility change listener - syncs state when user returns to tab
+  // This fixes the bug where React doesn't re-render after OTP verification
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Check if localStorage has user data but React state doesn't
+        const cachedUser = getCurrentEmailUser();
+        if (cachedUser && !user) {
+          console.log('[useEmailAuth] Visibility change detected - syncing user from localStorage');
+          setUser(cachedUser);
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [user]);
+
   // Send OTP to email
   const sendOTP = useCallback(async (email: string): Promise<boolean> => {
     setIsSendingOTP(true);

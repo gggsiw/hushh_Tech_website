@@ -1,11 +1,21 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { ChakraProvider, extendTheme } from '@chakra-ui/react';
 import { Coach } from './types';
 import { COACHES } from './constants';
 import CoachCard from './components/CoachCard';
 import LiveSession from './components/LiveSession';
 import EmailLoginModal from './components/EmailLoginModal';
 import ChatNode from './components/ChatNode';
+import AgentHeader from './components/AgentHeader';
 import { useEmailAuth } from './hooks/useEmailAuth';
+
+// Chakra UI theme for agent module
+const agentTheme = extendTheme({
+  config: {
+    initialColorMode: 'dark',
+    useSystemColorMode: false,
+  },
+});
 
 type FilterType = 'all' | 'biological' | 'automation' | 'dating' | 'career' | 'chatnode';
 
@@ -16,17 +26,9 @@ const STORAGE_KEYS = {
 };
 
 const App: React.FC = () => {
-  // Load initial state from localStorage
-  const [selectedCoach, setSelectedCoach] = useState<Coach | null>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.SELECTED_COACH);
-      if (stored) {
-        const coachId = JSON.parse(stored);
-        return COACHES.find(c => c.id === coachId) || null;
-      }
-    } catch { /* ignore */ }
-    return null;
-  });
+  // Selected coach state - NOT persisted to localStorage
+  // On refresh, user should go back to home screen
+  const [selectedCoach, setSelectedCoach] = useState<Coach | null>(null);
   
   const [activeFilter, setActiveFilter] = useState<FilterType>(() => {
     try {
@@ -40,22 +42,41 @@ const App: React.FC = () => {
   
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // Persist activeFilter to localStorage
+  // Persist activeFilter to localStorage - but NOT special nodes (chatnode)
+  // This prevents the issue where refreshing goes directly to chat instead of home
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ACTIVE_FILTER, JSON.stringify(activeFilter));
+    if (activeFilter === 'chatnode') {
+      // Don't persist chatnode - always start at home on refresh
+      localStorage.removeItem(STORAGE_KEYS.ACTIVE_FILTER);
+    } else {
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_FILTER, JSON.stringify(activeFilter));
+    }
   }, [activeFilter]);
 
-  // Persist selectedCoach to localStorage
-  useEffect(() => {
-    if (selectedCoach) {
-      localStorage.setItem(STORAGE_KEYS.SELECTED_COACH, JSON.stringify(selectedCoach.id));
-    } else {
-      localStorage.removeItem(STORAGE_KEYS.SELECTED_COACH);
-    }
-  }, [selectedCoach]);
+  // Handler for navigating home - clears all state
+  const handleHomeClick = useCallback(() => {
+    setActiveFilter('all');
+    setSelectedCoach(null);
+    localStorage.removeItem(STORAGE_KEYS.ACTIVE_FILTER);
+    localStorage.removeItem(STORAGE_KEYS.SELECTED_COACH);
+  }, []);
+
   
-  // Email Auth Hook
-  const { isAuthenticated, isLoading, user, signOut } = useEmailAuth();
+  // Email Auth Hook - destructure ALL functions to pass to modal
+  const { 
+    isAuthenticated, 
+    isLoading, 
+    user, 
+    signOut,
+    sendOTP,
+    verifyOTP,
+    isSendingOTP,
+    isVerifying,
+    error,
+    otpSent,
+    clearError,
+    refreshSession, // ADD: used to force state sync after login
+  } = useEmailAuth();
 
   const filteredCoaches = useMemo(() => {
     if (activeFilter === 'all') return COACHES;
@@ -80,7 +101,17 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-[#020202] flex items-center justify-center">
         <EmailLoginModal 
           isOpen={true} 
-          onClose={() => {}} 
+          onClose={() => {}}
+          // Force refresh session when login succeeds to sync React state
+          onLoginSuccess={refreshSession}
+          // Pass auth functions from App's hook instance to modal
+          sendOTP={sendOTP}
+          verifyOTP={verifyOTP}
+          isSendingOTP={isSendingOTP}
+          isVerifying={isVerifying}
+          error={error}
+          otpSent={otpSent}
+          clearError={clearError}
         />
       </div>
     );
@@ -97,10 +128,19 @@ const App: React.FC = () => {
       </div>
 
       {activeFilter === 'chatnode' ? (
-        <ChatNode 
-          isOpen={true} 
-          onClose={() => setActiveFilter('all')} 
-        />
+        <ChakraProvider theme={agentTheme}>
+          <AgentHeader
+            currentNode="chatnode"
+            userEmail={user?.email}
+            onHomeClick={handleHomeClick}
+            onSignOut={signOut}
+          />
+          <ChatNode 
+            isOpen={true} 
+            onClose={handleHomeClick}
+            showHeader={false}
+          />
+        </ChakraProvider>
       ) : !selectedCoach ? (
         <div className="relative z-10 max-w-[1600px] mx-auto px-6 py-16 md:py-32">
           {/* User Status Bar */}
@@ -224,10 +264,20 @@ const App: React.FC = () => {
           </footer>
         </div>
       ) : (
-        <LiveSession 
-          coach={selectedCoach} 
-          onClose={() => setSelectedCoach(null)} 
-        />
+        <ChakraProvider theme={agentTheme}>
+          <AgentHeader
+            currentNode={selectedCoach.category}
+            userEmail={user?.email}
+            onHomeClick={handleHomeClick}
+            onSignOut={signOut}
+            coachName={selectedCoach.name}
+          />
+          <LiveSession 
+            coach={selectedCoach} 
+            onClose={handleHomeClick}
+            showHeader={false}
+          />
+        </ChakraProvider>
       )}
     </div>
   );

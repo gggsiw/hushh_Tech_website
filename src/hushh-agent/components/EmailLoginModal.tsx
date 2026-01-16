@@ -27,7 +27,6 @@ import {
 } from '@chakra-ui/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiMail, FiArrowLeft, FiCheck, FiLock, FiShield } from 'react-icons/fi';
-import { useEmailAuth } from '../hooks/useEmailAuth';
 
 const MotionBox = motion(Box);
 
@@ -35,23 +34,30 @@ interface EmailLoginModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLoginSuccess?: () => void;
+  // Auth functions passed from parent (App.tsx) to share state
+  sendOTP: (email: string) => Promise<boolean>;
+  verifyOTP: (email: string, otp: string) => Promise<boolean>;
+  isSendingOTP: boolean;
+  isVerifying: boolean;
+  error: string | null;
+  otpSent: boolean;
+  clearError: () => void;
 }
 
 export const EmailLoginModal: React.FC<EmailLoginModalProps> = ({
   isOpen,
   onClose,
   onLoginSuccess,
+  // Use auth functions from props (shared state with App.tsx)
+  sendOTP,
+  verifyOTP,
+  isSendingOTP,
+  isVerifying,
+  error,
+  otpSent,
+  clearError,
 }) => {
   const toast = useToast();
-  const {
-    sendOTP,
-    verifyOTP,
-    isSendingOTP,
-    isVerifying,
-    error,
-    otpSent,
-    clearError,
-  } = useEmailAuth();
 
   // Local state
   const [email, setEmail] = useState('');
@@ -117,13 +123,19 @@ export const EmailLoginModal: React.FC<EmailLoginModalProps> = ({
     }
   };
 
-  // Handle success screen timeout and redirect
+  // Handle success screen - notify parent IMMEDIATELY to force state refresh
+  // Then show visual feedback before closing
   useEffect(() => {
     if (step === 'success') {
+      // Immediately notify parent that login succeeded
+      // This triggers refreshSession in App.tsx to sync the auth state
+      console.log('[EmailLoginModal] Success! Notifying parent immediately...');
+      onLoginSuccess?.();
+      
+      // Small delay for visual feedback, then close
       const timer = setTimeout(() => {
-        onLoginSuccess?.();
         onClose();
-      }, 2500); // Show success for 2.5 seconds
+      }, 1500);
       
       return () => clearTimeout(timer);
     }

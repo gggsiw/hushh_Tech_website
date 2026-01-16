@@ -8,6 +8,8 @@ import { decode, decodeAudioData, createPcmBlob } from '../services/audioUtils';
 interface LiveSessionProps {
   coach: Coach;
   onClose: () => void;
+  /** When true, internal header is hidden (external AgentHeader is used) */
+  showHeader?: boolean;
 }
 
 const BIO_READOUTS = [
@@ -72,7 +74,7 @@ const blobToBase64 = (blob: globalThis.Blob): Promise<string> => {
   });
 };
 
-const LiveSession: React.FC<LiveSessionProps> = ({ coach, onClose }) => {
+const LiveSession: React.FC<LiveSessionProps> = ({ coach, onClose, showHeader = true }) => {
   const [sessionState, setSessionState] = useState<SessionState>({
     isActive: false,
     isConnecting: true,
@@ -320,7 +322,10 @@ const LiveSession: React.FC<LiveSessionProps> = ({ coach, onClose }) => {
   useEffect(() => { isFullySyncedRef.current = isFullySynced; }, [isFullySynced]);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#010101] overflow-hidden select-none text-white">
+    <div 
+      className="fixed inset-0 z-50 flex flex-col bg-[#010101] overflow-hidden select-none text-white"
+      style={{ paddingTop: !showHeader ? '60px' : '0' }}
+    >
       {!isFullySynced && (
         <div className="absolute inset-0 z-[600] flex flex-col items-center justify-center backdrop-blur-3xl bg-black/95">
             <div className={`max-w-md w-[85%] p-10 glass rounded-[64px] border border-white/10 text-center space-y-10 shadow-2xl`}>
@@ -464,9 +469,12 @@ const LiveSession: React.FC<LiveSessionProps> = ({ coach, onClose }) => {
               </span>
           </div>
 
-          <button onClick={onClose} className="absolute top-6 left-6 lg:hidden w-12 h-12 rounded-full glass flex items-center justify-center border border-white/20">
-             <i className="fas fa-times text-white"></i>
-          </button>
+          {/* Internal close button - only shown when using internal header */}
+          {showHeader && (
+            <button onClick={onClose} className="absolute top-6 left-6 lg:hidden w-12 h-12 rounded-full glass flex items-center justify-center border border-white/20">
+               <i className="fas fa-times text-white"></i>
+            </button>
+          )}
         </div>
 
         {/* SIDEBAR LOG */}

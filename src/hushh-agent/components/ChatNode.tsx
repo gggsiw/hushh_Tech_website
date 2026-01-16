@@ -102,9 +102,11 @@ const saveMessagesToStorage = (messages: ChatMessage[]) => {
 interface ChatNodeProps {
   isOpen?: boolean;
   onClose?: () => void;
+  /** If false, the internal header is hidden (used when AgentHeader is shown externally) */
+  showHeader?: boolean;
 }
 
-export const ChatNode: React.FC<ChatNodeProps> = ({ isOpen = true, onClose }) => {
+export const ChatNode: React.FC<ChatNodeProps> = ({ isOpen = true, onClose, showHeader = true }) => {
   const toast = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -303,38 +305,80 @@ export const ChatNode: React.FC<ChatNodeProps> = ({ isOpen = true, onClose }) =>
       display="flex"
       flexDirection="column"
       position="relative"
+      // Add top padding when using external AgentHeader (60px)
+      pt={showHeader ? 0 : "60px"}
     >
-      {/* Header */}
-      <Flex
-        px={4}
-        py={3}
-        bg="whiteAlpha.50"
-        backdropFilter="blur(10px)"
-        borderBottom="1px solid"
-        borderColor="whiteAlpha.100"
-        align="center"
-        justify="space-between"
-        flexShrink={0}
-      >
-        <HStack spacing={3}>
-          <Box
-            bg="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-            p={2}
-            borderRadius="full"
-          >
-            <Icon as={FiMessageCircle} color="white" boxSize={5} />
-          </Box>
-          <VStack align="start" spacing={0}>
-            <Text color="white" fontWeight="600" fontSize="md">
-              Hushh Intelligence
-            </Text>
-            <Text color="gray.400" fontSize="xs">
-              Privacy-First AI • Free & Unlimited
-            </Text>
-          </VStack>
-        </HStack>
+      {/* Internal Header - only show if showHeader is true */}
+      {showHeader && (
+        <Flex
+          px={4}
+          py={3}
+          bg="whiteAlpha.50"
+          backdropFilter="blur(10px)"
+          borderBottom="1px solid"
+          borderColor="whiteAlpha.100"
+          align="center"
+          justify="space-between"
+          flexShrink={0}
+        >
+          <HStack spacing={3}>
+            <Box
+              bg="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+              p={2}
+              borderRadius="full"
+            >
+              <Icon as={FiMessageCircle} color="white" boxSize={5} />
+            </Box>
+            <VStack align="start" spacing={0}>
+              <Text color="white" fontWeight="600" fontSize="md">
+                Hushh Intelligence
+              </Text>
+              <Text color="gray.400" fontSize="xs">
+                Privacy-First AI • Free & Unlimited
+              </Text>
+            </VStack>
+          </HStack>
 
-        <HStack spacing={2}>
+          <HStack spacing={2}>
+            <Tooltip label="Clear chat">
+              <IconButton
+                aria-label="Clear chat"
+                icon={<FiTrash2 />}
+                variant="ghost"
+                color="gray.400"
+                _hover={{ color: 'red.400', bg: 'whiteAlpha.100' }}
+                size="sm"
+                onClick={handleClearChat}
+              />
+            </Tooltip>
+            {onClose && (
+              <IconButton
+                aria-label="Close"
+                icon={<FiX />}
+                variant="ghost"
+                color="gray.400"
+                _hover={{ color: 'white', bg: 'whiteAlpha.100' }}
+                size="sm"
+                onClick={onClose}
+              />
+            )}
+          </HStack>
+        </Flex>
+      )}
+
+      {/* Quick Actions Bar - shown when using external header */}
+      {!showHeader && (
+        <Flex
+          px={4}
+          py={2}
+          bg="whiteAlpha.30"
+          backdropFilter="blur(10px)"
+          borderBottom="1px solid"
+          borderColor="whiteAlpha.50"
+          align="center"
+          justify="flex-end"
+          flexShrink={0}
+        >
           <Tooltip label="Clear chat">
             <IconButton
               aria-label="Clear chat"
@@ -346,19 +390,8 @@ export const ChatNode: React.FC<ChatNodeProps> = ({ isOpen = true, onClose }) =>
               onClick={handleClearChat}
             />
           </Tooltip>
-          {onClose && (
-            <IconButton
-              aria-label="Close"
-              icon={<FiX />}
-              variant="ghost"
-              color="gray.400"
-              _hover={{ color: 'white', bg: 'whiteAlpha.100' }}
-              size="sm"
-              onClick={onClose}
-            />
-          )}
-        </HStack>
-      </Flex>
+        </Flex>
+      )}
 
       {/* Messages */}
       <Box flex={1} overflowY="auto" px={4} py={4}>
