@@ -385,37 +385,32 @@ This is Phase 0 - Neural Calibration before resume analysis.`
         });
       }
       
-      // Send the resume directly to Gemini Live session as inline data
+      // NOTE: We do NOT send the PDF directly to the Gemini Live session as inline data
+      // because PDF files can cause the live session to disconnect. Instead, we:
+      // 1. Run the deep analysis in the background (above)
+      // 2. Just notify the Live session verbally about the upload
       if (sessionRef.current) {
-        // Send the PDF as inline data to the Live session
+        // Just send a text notification - don't send the actual PDF which can cause session issues
         sessionRef.current.sendRealtimeInput({
-          media: {
-            data: result.base64Data,
-            mimeType: result.mimeType,
-          }
-        });
-        
-        // Then send a text prompt to analyze it
-        setTimeout(() => {
-          sessionRef.current?.sendRealtimeInput({
-            text: `[SYSTEM: Resume Uploaded Successfully]
+          text: `[SYSTEM: Resume Uploaded Successfully]
 The user has just uploaded their resume: ${result.fileName} (${(result.fileSize / 1024).toFixed(1)} KB)
-The resume PDF has been sent to you for analysis.
 
-Now provide a brief acknowledgment and ask what aspect of their resume they'd like to explore first.
-Be specific - mention that you can see their resume and are ready to analyze it.`
-          });
-        }, 500);
+A deep analysis is being processed in the background and will be emailed to them.
+
+For now, acknowledge the upload warmly and offer to discuss their career goals, experience, 
+or any specific questions they have about their resume. Be conversational and supportive.
+Ask them what aspects of their career they'd like to explore together.`
+        });
       }
       
-      console.log('[Vision] Resume sent to Live session:', result.fileName);
+      console.log('[Vision] Resume uploaded successfully:', result.fileName);
     } catch (error) {
       console.error('[Vision] Resume upload failed:', error);
       setUploadComplete(false);
     } finally {
       setIsUploadingResume(false);
     }
-  }, [selectedCoach]);
+  }, [selectedCoach, userEmail, userId]);
 
   // Handle upload complete - called after success animation
   const handleUploadComplete = useCallback(() => {
