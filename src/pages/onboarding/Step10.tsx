@@ -1,9 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import config from '../../resources/config/config';
 import { useFooterVisibility } from '../../utils/useFooterVisibility';
-import { searchProfile, mapToOnboardingFields } from '../../services/profileSearch/profileSearchService';
-import { ParsedAddress } from '../../services/profileSearch/types';
 
 // Types for location data from our Edge Function
 interface Country {
@@ -150,7 +148,15 @@ function OnboardingStep10() {
     fetchCities();
   }, [country, state]);
 
-  // Load existing data with AI pre-population from enriched profiles
+  // AI Address Inference state
+  const [isInferringAddress, setIsInferringAddress] = useState(false);
+  const [inferenceMessage, setInferenceMessage] = useState<string | null>(null);
+  const inferenceAbortController = useRef<AbortController | null>(null);
+
+  // Lightweight Address Inference API URL
+  const ADDRESS_INFERENCE_API = 'https://ibsisfnjxeowvdtvgzff.supabase.co/functions/v1/hushh-address-inference';
+
+  // Load existing data with GPS pre-population and AI fallback
   useEffect(() => {
     const loadData = async () => {
       if (!config.supabaseClient) return;
@@ -159,9 +165,10 @@ function OnboardingStep10() {
       if (!user) return;
 
       // 1. First, check existing onboarding data (user-entered takes priority)
+      // Also fetch GPS-detected location data from Step 6
       const { data: onboardingData } = await config.supabaseClient
         .from('onboarding_data')
-        .select('address_line_1, address_line_2, address_country, state, city, zip_code, legal_first_name, legal_last_name')
+        .select('address_line_1, address_line_2, address_country, state, city, zip_code, legal_first_name, legal_last_name, gps_detected_country, gps_detected_state, gps_detected_city, gps_detected_postal_code, gps_location_data, residence_country')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -176,7 +183,50 @@ function OnboardingStep10() {
         return; // User has existing data, don't override
       }
 
-      // 2. Check for cached enriched profile data
+      // 2. Check for GPS-detected location data from Step 6 (fastest, most reliable)
+      if (onboardingData?.gps_location_data) {
+        const gpsData = onboardingData.gps_location_data as {
+          country?: string;
+          countryCode?: string;
+          state?: string;
+          stateCode?: string;
+          city?: string;
+          postalCode?: string;
+        };
+        console.log('[Step10] Using GPS-detected location data:', gpsData);
+        
+        // Set country (triggers state dropdown loading)
+        if (gpsData.countryCode) {
+          setCountry(gpsData.countryCode);
+        }
+        
+        // Set postal code immediately
+        if (gpsData.postalCode) {
+          setZipCode(gpsData.postalCode);
+        }
+        
+        // Delay setting state/city to allow dropdowns to load
+        setTimeout(() => {
+          // Use stateCode for select dropdown matching
+          if (gpsData.stateCode) {
+            setState(gpsData.stateCode);
+          } else if (gpsData.state) {
+            setState(gpsData.state);
+          }
+          
+          setTimeout(() => {
+            if (gpsData.city) {
+              setCity(gpsData.city);
+            }
+          }, 300);
+        }, 500);
+        
+        setInferenceMessage('Location pre-filled from GPS');
+        setTimeout(() => setInferenceMessage(null), 2000);
+        return; // GPS data found, don't need AI inference
+      }
+
+      // 3. Check for cached enriched profile data (from previous inference)
       const { data: enrichedProfile } = await config.supabaseClient
         .from('user_enriched_profiles')
         .select('address')
@@ -184,14 +234,23 @@ function OnboardingStep10() {
         .maybeSingle();
 
       if (enrichedProfile?.address) {
-        const addr = enrichedProfile.address as ParsedAddress;
+        const addr = enrichedProfile.address as {
+          line1?: string;
+          line2?: string;
+          city?: string;
+          state?: string;
+          country?: string;
+          countryCode?: string;
+          zipCode?: string;
+        };
         console.log('[Step10] Found cached enriched profile address:', addr);
         
         // Pre-fill from enriched profile
         if (addr.line1) setAddressLine1(addr.line1);
         if (addr.line2) setAddressLine2(addr.line2);
-        if (addr.country) {
-          // Map country name to ISO code if needed
+        if (addr.countryCode) {
+          setCountry(addr.countryCode);
+        } else if (addr.country) {
           const countryCode = mapCountryToIsoCode(addr.country);
           setCountry(countryCode);
         }
@@ -201,32 +260,54 @@ function OnboardingStep10() {
         return;
       }
 
-      // 3. No cached data - try to fetch from profile search API if we have name
+      // 4. Fallback: Use residence_country from Step 6 if GPS data not available
+      if (onboardingData?.residence_country) {
+        const countryCode = mapCountryToIsoCode(onboardingData.residence_country);
+        console.log('[Step10] Using residence_country as fallback:', countryCode);
+        setCountry(countryCode);
+      }
+
+      // 5. No cached data - use lightweight address inference API if we have name
       if (onboardingData?.legal_first_name && onboardingData?.legal_last_name) {
-        console.log('[Step10] No cached profile, calling profile search API...');
+        console.log('[Step10] No cached profile, calling lightweight address inference API...');
         
         const fullName = `${onboardingData.legal_first_name} ${onboardingData.legal_last_name}`;
         const userEmail = user.email || '';
         
+        setIsInferringAddress(true);
+        setInferenceMessage('🔍 Finding your location...');
+        
+        // Create abort controller for cleanup
+        inferenceAbortController.current = new AbortController();
+        
         try {
-          const result = await searchProfile({
-            name: fullName,
-            email: userEmail,
-            country: 'United States', // Default, will be overridden by API result
+          const response = await fetch(ADDRESS_INFERENCE_API, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              name: fullName,
+              email: userEmail,
+            }),
+            signal: inferenceAbortController.current.signal,
           });
 
+          const result = await response.json();
+
           if (result.success && result.data) {
-            console.log('[Step10] Profile search success:', result.data);
+            console.log('[Step10] Address inference success:', result.data);
+            setInferenceMessage(`✅ Found: ${result.data.address?.city || result.data.address?.country || 'Location detected'}`);
             
-            // Cache the enriched profile for future use
+            const addr = result.data.address;
+            
+            // Cache the inferred address for future use
             await config.supabaseClient
               .from('user_enriched_profiles')
               .upsert({
                 user_id: user.id,
-                address: result.data.address,
+                address: addr,
                 nationality: result.data.nationality,
-                occupation: result.data.occupation,
-                preferences: result.data.preferences,
                 confidence: result.data.confidence,
                 search_query: fullName,
                 sources: result.data.sources,
@@ -237,27 +318,53 @@ function OnboardingStep10() {
               });
 
             // Pre-fill address from API result
-            if (result.data.address) {
-              const addr = result.data.address;
-              if (addr.line1) setAddressLine1(addr.line1);
-              if (addr.line2) setAddressLine2(addr.line2);
-              if (addr.country) {
+            if (addr) {
+              // Set country first (triggers state dropdown loading)
+              if (addr.countryCode) {
+                setCountry(addr.countryCode);
+              } else if (addr.country) {
                 const countryCode = mapCountryToIsoCode(addr.country);
                 setCountry(countryCode);
               }
-              if (addr.state) setState(addr.state);
-              if (addr.city) setCity(addr.city);
-              if (addr.zipCode) setZipCode(addr.zipCode);
+              
+              // Delay setting state/city to allow dropdowns to load
+              setTimeout(() => {
+                if (addr.state) setState(addr.state);
+                if (addr.city) setCity(addr.city);
+                if (addr.zipCode) setZipCode(addr.zipCode);
+              }, 500);
             }
+            
+            // Clear message after 2 seconds
+            setTimeout(() => {
+              setInferenceMessage(null);
+            }, 2000);
+          } else {
+            console.log('[Step10] Address inference returned no data');
+            setInferenceMessage(null);
           }
         } catch (err) {
-          console.error('[Step10] Profile search error:', err);
+          if ((err as Error).name === 'AbortError') {
+            console.log('[Step10] Address inference aborted');
+          } else {
+            console.error('[Step10] Address inference error:', err);
+          }
+          setInferenceMessage(null);
           // Silently fail - user can enter manually
+        } finally {
+          setIsInferringAddress(false);
         }
       }
     };
 
     loadData();
+    
+    // Cleanup: abort any pending request on unmount
+    return () => {
+      if (inferenceAbortController.current) {
+        inferenceAbortController.current.abort();
+      }
+    };
   }, []);
 
   // Helper function to map country names to ISO codes
@@ -446,6 +553,27 @@ function OnboardingStep10() {
             <p className="text-slate-500 text-[14px] font-normal leading-relaxed">
               Please provide your primary residence address.
             </p>
+            
+            {/* AI Address Inference Status */}
+            {(isInferringAddress || inferenceMessage) && (
+              <div className={`mt-4 py-2 px-4 rounded-full inline-flex items-center gap-2 text-sm font-medium transition-all ${
+                isInferringAddress 
+                  ? 'bg-blue-50 text-blue-600 animate-pulse' 
+                  : 'bg-green-50 text-green-600'
+              }`}>
+                {isInferringAddress ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>{inferenceMessage || 'Finding your location...'}</span>
+                  </>
+                ) : (
+                  <span>{inferenceMessage}</span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Error Message */}

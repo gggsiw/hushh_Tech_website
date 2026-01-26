@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import config from '../../resources/config/config';
 import { useFooterVisibility } from '../../utils/useFooterVisibility';
@@ -14,6 +14,14 @@ const BackIcon = () => (
 const ChevronDownIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M6 9l6 6 6-6" />
+  </svg>
+);
+
+// Location pin icon (professional, no emoji)
+const LocationIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+    <circle cx="12" cy="10" r="3" />
   </svg>
 );
 
@@ -47,6 +55,78 @@ const countries = [
   'Uzbekistan', 'Vanuatu', 'Vatican City', 'Venezuela', 'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe'
 ];
 
+// Country code to full name mapping for GPS detection
+const countryCodeToName: Record<string, string> = {
+  'US': 'United States',
+  'CA': 'Canada',
+  'GB': 'United Kingdom',
+  'UK': 'United Kingdom',
+  'IN': 'India',
+  'CN': 'China',
+  'JP': 'Japan',
+  'AU': 'Australia',
+  'DE': 'Germany',
+  'FR': 'France',
+  'IT': 'Italy',
+  'ES': 'Spain',
+  'BR': 'Brazil',
+  'MX': 'Mexico',
+  'RU': 'Russia',
+  'KR': 'South Korea',
+  'SA': 'Saudi Arabia',
+  'AE': 'United Arab Emirates',
+  'SG': 'Singapore',
+  'HK': 'Hong Kong',
+  'NZ': 'New Zealand',
+  'ZA': 'South Africa',
+  'EG': 'Egypt',
+  'NG': 'Nigeria',
+  'PK': 'Pakistan',
+  'BD': 'Bangladesh',
+  'ID': 'Indonesia',
+  'MY': 'Malaysia',
+  'TH': 'Thailand',
+  'VN': 'Vietnam',
+  'PH': 'Philippines',
+  'TR': 'Turkey',
+  'PL': 'Poland',
+  'NL': 'Netherlands',
+  'BE': 'Belgium',
+  'SE': 'Sweden',
+  'NO': 'Norway',
+  'DK': 'Denmark',
+  'FI': 'Finland',
+  'CH': 'Switzerland',
+  'AT': 'Austria',
+  'PT': 'Portugal',
+  'GR': 'Greece',
+  'IE': 'Ireland',
+  'IL': 'Israel',
+  'AR': 'Argentina',
+  'CL': 'Chile',
+  'CO': 'Colombia',
+  'PE': 'Peru',
+  'VE': 'Venezuela',
+};
+
+// Edge Function URL for GPS geocoding
+const LOCATION_GEOCODE_API = 'https://ibsisfnjxeowvdtvgzff.supabase.co/functions/v1/hushh-location-geocode';
+
+// Location data type from GPS API
+interface LocationData {
+  country: string;
+  countryCode: string;
+  state: string;
+  stateCode: string;
+  city: string;
+  postalCode: string;
+  phoneDialCode: string;
+  timezone: string;
+  formattedAddress: string;
+  latitude: number;
+  longitude: number;
+}
+
 export default function OnboardingStep6() {
   const navigate = useNavigate();
   const [userId, setUserId] = useState<string | null>(null);
@@ -54,6 +134,12 @@ export default function OnboardingStep6() {
   const [residenceCountry, setResidenceCountry] = useState('United States');
   const [isLoading, setIsLoading] = useState(false);
   const isFooterVisible = useFooterVisibility();
+
+  // GPS location detection state
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [locationMessage, setLocationMessage] = useState<string | null>(null);
+  const [locationDetected, setLocationDetected] = useState(false);
+  const locationAbortController = useRef<AbortController | null>(null);
 
   useEffect(() => {
     // Scroll to top on component mount
@@ -71,21 +157,142 @@ export default function OnboardingStep6() {
       }
       setUserId(user.id);
 
-      // Load existing data if any - default to United States if not set
+      // Load existing data if any
       const { data: onboardingData } = await config.supabaseClient
         .from('onboarding_data')
-        .select('citizenship_country, residence_country')
+        .select('citizenship_country, residence_country, gps_location_data')
         .eq('user_id', user.id)
         .single();
 
       if (onboardingData) {
-        setCitizenshipCountry(onboardingData.citizenship_country || 'United States');
-        setResidenceCountry(onboardingData.residence_country || 'United States');
+        // If user already has data, use it
+        if (onboardingData.citizenship_country) {
+          setCitizenshipCountry(onboardingData.citizenship_country);
+        }
+        if (onboardingData.residence_country) {
+          setResidenceCountry(onboardingData.residence_country);
+        }
+        
+        // If GPS data already cached, don't detect again
+        if (onboardingData.gps_location_data) {
+          setLocationDetected(true);
+          return;
+        }
       }
+
+      // Start GPS detection for new users
+      detectLocation(user.id);
     };
 
     getCurrentUser();
+    
+    // Cleanup
+    return () => {
+      if (locationAbortController.current) {
+        locationAbortController.current.abort();
+      }
+    };
   }, [navigate]);
+
+  // GPS location detection function
+  const detectLocation = async (uid: string) => {
+    // Check if geolocation is available
+    if (!navigator.geolocation) {
+      console.log('[Step6] Geolocation not available');
+      return;
+    }
+
+    setIsDetectingLocation(true);
+    setLocationMessage('Detecting your location...');
+
+    try {
+      // Request GPS coordinates
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          resolve,
+          reject,
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 300000, // 5 minutes cache
+          }
+        );
+      });
+
+      const { latitude, longitude } = position.coords;
+      console.log(`[Step6] GPS coordinates: ${latitude}, ${longitude}`);
+
+      // Create abort controller
+      locationAbortController.current = new AbortController();
+
+      // Call geocoding API
+      const response = await fetch(LOCATION_GEOCODE_API, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ latitude, longitude }),
+        signal: locationAbortController.current.signal,
+      });
+
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        const locationData: LocationData = result.data;
+        console.log('[Step6] Location detected:', locationData);
+
+        // Map country code to full name
+        const countryName = countryCodeToName[locationData.countryCode] || locationData.country;
+        
+        // Update UI with detected country
+        if (countries.includes(countryName)) {
+          setCitizenshipCountry(countryName);
+          setResidenceCountry(countryName);
+        }
+
+        setLocationMessage(`Location detected: ${locationData.city || locationData.state || countryName}`);
+        setLocationDetected(true);
+
+        // Cache GPS location data to onboarding_data for use in Step 8 and Step 10
+        if (config.supabaseClient) {
+          await config.supabaseClient
+            .from('onboarding_data')
+            .update({
+              gps_location_data: locationData,
+              gps_detected_country: countryName,
+              gps_detected_state: locationData.state,
+              gps_detected_city: locationData.city,
+              gps_detected_postal_code: locationData.postalCode,
+              gps_detected_phone_dial_code: locationData.phoneDialCode,
+              gps_detected_timezone: locationData.timezone,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', uid);
+        }
+
+        // Clear message after 2 seconds
+        setTimeout(() => {
+          setLocationMessage(null);
+        }, 2000);
+      } else {
+        console.log('[Step6] Geocoding failed:', result.error);
+        setLocationMessage(null);
+      }
+    } catch (error) {
+      if ((error as Error).name === 'AbortError') {
+        console.log('[Step6] Location detection aborted');
+      } else if ((error as GeolocationPositionError).code === 1) {
+        // User denied permission
+        console.log('[Step6] Location permission denied');
+        setLocationMessage('Location access denied');
+        setTimeout(() => setLocationMessage(null), 2000);
+      } else {
+        console.error('[Step6] Location detection error:', error);
+      }
+    } finally {
+      setIsDetectingLocation(false);
+    }
+  };
 
   const handleContinue = async () => {
     if (!userId || !config.supabaseClient) return;
@@ -142,6 +349,32 @@ export default function OnboardingStep6() {
             <p className="text-slate-500 text-[14px] font-normal leading-relaxed">
               We need to know where you live and pay taxes to open your investment account.
             </p>
+            
+            {/* GPS Location Detection Status */}
+            {(isDetectingLocation || locationMessage) && (
+              <div className={`mt-4 py-2 px-4 rounded-full inline-flex items-center gap-2 text-sm font-medium transition-all ${
+                isDetectingLocation 
+                  ? 'bg-blue-50 text-blue-600' 
+                  : locationDetected
+                    ? 'bg-green-50 text-green-600'
+                    : 'bg-slate-50 text-slate-500'
+              }`}>
+                {isDetectingLocation ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>{locationMessage}</span>
+                  </>
+                ) : (
+                  <>
+                    <LocationIcon />
+                    <span>{locationMessage}</span>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Carded Form Block */}
