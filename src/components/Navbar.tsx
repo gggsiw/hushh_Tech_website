@@ -126,8 +126,18 @@ export default function Navbar() {
   };
 
   // Show welcome toast when a user is signed in (only once)
+  // But skip if account was just deleted (to prevent showing welcome after deletion)
   useEffect(() => {
     if (session && !toastShown) {
+      // Check if account was just deleted - if so, don't show welcome toast
+      const accountJustDeleted = localStorage.getItem("accountJustDeleted");
+      if (accountJustDeleted === "true") {
+        // Clear the flag and skip the welcome toast
+        localStorage.removeItem("accountJustDeleted");
+        setToastShown(true); // Mark as shown to prevent future triggers
+        return;
+      }
+      
       toast({
         title: t('common.welcome'),
         description: t('common.signInMessage'),
@@ -168,9 +178,16 @@ export default function Navbar() {
   };
 
   const handleAccountDeleted = () => {
+    // Reset states immediately for proper UI update
     setSession(null);
+    setToastShown(true); // Prevent welcome toast from showing
+    setIsOpen(false); // Close sidebar drawer immediately
     onDeleteModalClose();
-    navigate("/");
+    
+    // Navigate to home after a brief delay for cleanup
+    setTimeout(() => {
+      navigate("/");
+    }, 100);
   };
 
   // Handle scroll to check if user reached bottom of menu

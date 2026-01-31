@@ -96,8 +96,15 @@ const DeleteAccountModal = ({
 
       console.log("[DeleteAccount] Account deleted successfully");
 
-      // Clear local storage
-      localStorage.clear();
+      // Set flag BEFORE clearing storage to prevent welcome toast in Navbar
+      localStorage.setItem("accountJustDeleted", "true");
+      
+      // Clear other local storage items but keep the flag
+      const keysToRemove = Object.keys(localStorage).filter(key => key !== "accountJustDeleted");
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+
+      // Sign out from Supabase to clear the session
+      await config.supabaseClient.auth.signOut();
 
       toast({
         title: t("deleteAccount.successTitle"),
@@ -107,8 +114,10 @@ const DeleteAccountModal = ({
         isClosable: true,
       });
 
-      // Notify parent component
-      onAccountDeleted();
+      // Notify parent component (after a small delay to ensure toast is visible)
+      setTimeout(() => {
+        onAccountDeleted();
+      }, 500);
     } catch (error: any) {
       console.error("[DeleteAccount] Error:", error);
       toast({
