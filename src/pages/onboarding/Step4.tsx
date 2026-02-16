@@ -103,6 +103,7 @@ export default function OnboardingStep4() {
   const [detectedLocation, setDetectedLocation] = useState<string>('');
   const [userConfirmedManual, setUserConfirmedManual] = useState(false);
   const [showPermissionHelp, setShowPermissionHelp] = useState(false);
+  const [hasPreviousData, setHasPreviousData] = useState(false);
 
   // Continue button should only be enabled if:
   // 1. Location has been detected (GPS success), OR
@@ -137,11 +138,12 @@ export default function OnboardingStep4() {
         if (onboardingData.citizenship_country) {
           setCitizenshipCountry(onboardingData.citizenship_country);
           setUserManuallyChanged(true); // User already has data, allow continue
+          setHasPreviousData(true); // Track that we loaded previous data
         }
         if (onboardingData.residence_country) {
           setResidenceCountry(onboardingData.residence_country);
         }
-        
+
         // NOTE: We no longer skip GPS detection even if cached.
         // Always detect fresh GPS location in real-time every time user visits Step 6
       }
@@ -183,6 +185,7 @@ export default function OnboardingStep4() {
         setDetectedLocation(locationText);
         setLocationDetected(true);
         setLocationStatus('success');
+        setHasPreviousData(false); // Clear previous data flag (now using GPS data)
 
         // Save GPS location data for use in Step 8 and Step 10
         await locationService.saveLocationToOnboarding(uid, locationData);
@@ -419,6 +422,32 @@ export default function OnboardingStep4() {
               </div>
             )}
           </div>
+
+          {/* Previous Data Info - Show when GPS denied/failed but we have old data */}
+          {hasPreviousData && (locationStatus === 'denied' || locationStatus === 'failed') && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2.5">
+              <svg
+                className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+              <div className="flex-1">
+                <p className="text-xs text-blue-900">
+                  <span className="font-semibold">Using your previously selected country.</span>
+                  {' '}You can change it if needed below.
+                  {locationStatus === 'denied' && ' Or enable location access to detect automatically.'}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Carded Form Block */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-6 mb-8">
