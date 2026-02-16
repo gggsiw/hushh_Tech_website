@@ -9,6 +9,9 @@ import LanguageSwitcher from "./LanguageSwitcher";
 import DeleteAccountModal from "./DeleteAccountModal";
 import { useStockQuotes, StockQuote, STOCK_LOGOS } from "../hooks/useStockQuotes";
 
+const WELCOME_TOAST_PENDING_KEY = "showWelcomeToast";
+const WELCOME_TOAST_USER_KEY = "showWelcomeToastUserId";
+
 // Chip-based ticker component - Light theme design
 const TickerChip = ({ quote, isLoading }: { quote: StockQuote; isLoading?: boolean }) => {
   return (
@@ -46,6 +49,7 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [session, setSession] = useState<any>(null);
   const [toastShown, setToastShown] = useState(false);
+  const previousUserIdRef = useRef<string | null>(null);
   const [careerDropdownOpen, setCareerDropdownOpen] = useState(false);
   const [mobileCareerDropdownOpen, setMobileCareerDropdownOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -68,20 +72,39 @@ export default function Navbar() {
 
   useEffect(() => {
     if (!config.supabaseClient) return;
+
+    const syncSessionIfUserChanged = (nextSession: any) => {
+      setSession((currentSession: any) => {
+        const currentUserId = currentSession?.user?.id ?? null;
+        const nextUserId = nextSession?.user?.id ?? null;
+        const currentAccessToken = currentSession?.access_token ?? null;
+        const nextAccessToken = nextSession?.access_token ?? null;
+        const isSameSession = currentUserId === nextUserId && currentAccessToken === nextAccessToken;
+        return isSameSession ? currentSession : nextSession;
+      });
+    };
     
     // Fetch the current session
     config.supabaseClient.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
+      syncSessionIfUserChanged(session);
     });
 
     // Listen for auth state changes
-    const { data: { subscription } } = config.supabaseClient.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+    const { data: { subscription } } = config.supabaseClient.auth.onAuthStateChange((_event, nextSession) => {
+      syncSessionIfUserChanged(nextSession);
     });
     
     const cleanup = () => subscription?.unsubscribe();
     return cleanup;
   }, []);
+
+  useEffect(() => {
+    const currentUserId = session?.user?.id ?? null;
+    if (previousUserIdRef.current !== currentUserId) {
+      setToastShown(false);
+      previousUserIdRef.current = currentUserId;
+    }
+  }, [session?.user?.id]);
 
   const handleLogout = async () => {
     if (!config.supabaseClient) return;
@@ -94,30 +117,43 @@ export default function Navbar() {
     }
 
     localStorage.removeItem("isLoggedIn");
+    sessionStorage.removeItem(WELCOME_TOAST_PENDING_KEY);
+    sessionStorage.removeItem(WELCOME_TOAST_USER_KEY);
   };
 
   // Show welcome toast when a user is signed in (only once)
   // But skip if account was just deleted (to prevent showing welcome after deletion)
   useEffect(() => {
-    if (session && !toastShown) {
-      // Check if account was just deleted - if so, don't show welcome toast
-      const accountJustDeleted = localStorage.getItem("accountJustDeleted");
-      if (accountJustDeleted === "true") {
-        // Clear the flag and skip the welcome toast
-        localStorage.removeItem("accountJustDeleted");
-        setToastShown(true); // Mark as shown to prevent future triggers
-        return;
-      }
-      
-      toast({
-        title: t('common.welcome'),
-        description: t('common.signInMessage'),
-        status: "success",
-        duration: 5000,
-        isClosable: true,
-      });
+    if (!session || toastShown) return;
+
+    // Check if account was just deleted - if so, don't show welcome toast
+    const accountJustDeleted = localStorage.getItem("accountJustDeleted");
+    if (accountJustDeleted === "true") {
+      localStorage.removeItem("accountJustDeleted");
       setToastShown(true);
+      return;
     }
+
+    const shouldShowWelcomeToast = sessionStorage.getItem(WELCOME_TOAST_PENDING_KEY) === "true";
+    const pendingToastUserId = sessionStorage.getItem(WELCOME_TOAST_USER_KEY);
+    const currentUserId = session?.user?.id ?? null;
+    const isPendingForCurrentUser = shouldShowWelcomeToast && (!pendingToastUserId || pendingToastUserId === currentUserId);
+
+    if (!isPendingForCurrentUser) {
+      setToastShown(true);
+      return;
+    }
+    
+    toast({
+      title: t('common.welcome'),
+      description: t('common.signInMessage'),
+      status: "success",
+      duration: 5000,
+      isClosable: true,
+    });
+    sessionStorage.removeItem(WELCOME_TOAST_PENDING_KEY);
+    sessionStorage.removeItem(WELCOME_TOAST_USER_KEY);
+    setToastShown(true);
   }, [session, toastShown, toast, t]);
 
   const isAuthenticated = !!session;

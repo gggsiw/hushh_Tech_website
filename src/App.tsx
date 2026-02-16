@@ -160,15 +160,26 @@ function App() {
   // Fetch user session when app loads
   useEffect(() => {
     if (config.supabaseClient) {
+      const syncSessionIfUserChanged = (nextSession: Session | null) => {
+        setSession((currentSession) => {
+          const currentUserId = currentSession?.user?.id ?? null;
+          const nextUserId = nextSession?.user?.id ?? null;
+          const currentAccessToken = currentSession?.access_token ?? null;
+          const nextAccessToken = nextSession?.access_token ?? null;
+          const isSameSession = currentUserId === nextUserId && currentAccessToken === nextAccessToken;
+          return isSameSession ? currentSession : nextSession;
+        });
+      };
+
       config.supabaseClient.auth.getSession().then(({ data: { session } }) => {
-        setSession(session);
+        syncSessionIfUserChanged(session);
       });
 
       // Listen for auth state changes
       const {
         data: { subscription },
-      } = config.supabaseClient.auth.onAuthStateChange((_event, session) => {
-        setSession(session);
+      } = config.supabaseClient.auth.onAuthStateChange((_event, nextSession) => {
+        syncSessionIfUserChanged(nextSession);
       });
 
       return () => subscription?.unsubscribe();

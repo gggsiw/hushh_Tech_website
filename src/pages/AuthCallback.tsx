@@ -142,6 +142,15 @@ const AuthCallback: React.FC = () => {
     return hasCompletedOnboarding ? '/hushh-user-profile' : '/onboarding/financial-link';
   };
 
+  const queueWelcomeToast = (userId?: string | null) => {
+    sessionStorage.setItem('showWelcomeToast', 'true');
+    if (userId) {
+      sessionStorage.setItem('showWelcomeToastUserId', userId);
+      return;
+    }
+    sessionStorage.removeItem('showWelcomeToastUserId');
+  };
+
   useEffect(() => {
     const handleEmailVerification = async () => {
       try {
@@ -152,6 +161,10 @@ const AuthCallback: React.FC = () => {
           console.error('[Hushh][AuthCallback] Supabase client missing - cannot restore session');
           return;
         }
+
+        // Always clear stale toast flags; set again only on successful auth restore.
+        sessionStorage.removeItem('showWelcomeToast');
+        sessionStorage.removeItem('showWelcomeToastUserId');
 
         // Check for any type and error from the URL
         const type = searchParams.get('type');
@@ -238,6 +251,7 @@ const AuthCallback: React.FC = () => {
           }
 
           // Proceed to success/redirect directly (no MFA check)
+          queueWelcomeToast(user.id);
           setVerificationStatus('success');
           setTimeout(() => {
             const hasCompletedOnboarding = onboardingData?.is_completed ?? false;
@@ -284,6 +298,7 @@ const AuthCallback: React.FC = () => {
 
             // Proceed to success/redirect directly (no MFA check)
             console.log('[AuthCallback] Proceeding to redirect (2FA disabled)');
+            queueWelcomeToast(user.id);
             setVerificationStatus('success');
             setTimeout(() => {
               const hasCompletedOnboarding = onboardingData?.is_completed ?? false;
