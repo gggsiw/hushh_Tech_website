@@ -116,12 +116,12 @@ function OnboardingStep9() {
         const savedDob = formatIsoToDisplay(data.date_of_birth);
         if (savedDob) {
           setDob(savedDob);
-          console.log('[Step11] ✅ Restored saved DOB:', savedDob);
+          console.log('[Step11] âœ… Restored saved DOB:', savedDob);
         }
       }
       if (data?.ssn_encrypted && data.ssn_encrypted !== '999-99-9999') {
         setSsn(data.ssn_encrypted);
-        console.log('[Step11] ✅ Restored saved SSN');
+        console.log('[Step11] âœ… Restored saved SSN');
       }
     };
 
@@ -220,7 +220,7 @@ function OnboardingStep9() {
       return;
     }
 
-    navigate('/onboarding/step-10');
+    navigate('/onboarding/step-11');
   };
 
   const handleSkip = async () => {
@@ -270,7 +270,7 @@ function OnboardingStep9() {
       return;
     }
 
-    navigate('/onboarding/step-10');
+    navigate('/onboarding/step-11');
   };
 
   const handleBack = () => {
@@ -282,7 +282,7 @@ function OnboardingStep9() {
       className="bg-slate-50 min-h-screen"
       style={{ fontFamily: "'Manrope', sans-serif" }}
     >
-      <div className="relative flex min-h-screen w-full flex-col bg-white max-w-[500px] mx-auto shadow-xl overflow-hidden border-x border-slate-100">
+      <div className="onboarding-shell relative flex min-h-screen w-full flex-col bg-white max-w-[500px] mx-auto shadow-xl overflow-hidden border-x border-slate-100">
         
         {/* Sticky Header */}
         <header className="flex items-center px-4 pt-4 pb-2 bg-white sticky top-0 z-10">

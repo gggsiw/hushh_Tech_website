@@ -681,7 +681,7 @@ const HushhUserProfilePage: React.FC = () => {
       <div className="max-w-md mx-auto min-h-screen flex flex-col relative pb-8">
         
         {/* Sticky Header */}
-        <header className="flex items-center justify-between px-4 py-4 sticky top-0 bg-white z-10 border-b border-transparent">
+        <header className="flex items-center justify-between px-4 py-4 sticky top-28 bg-white z-10 border-b border-transparent">
           <button 
             onClick={handleBack}
             className="p-2 -ml-2 text-[#111827] hover:bg-gray-100 rounded-full transition-colors"
@@ -1558,14 +1558,14 @@ const HushhUserProfilePage: React.FC = () => {
         {/* Fixed Footer - Hidden when main footer is visible */}
         {!isFooterVisible && (
           <div 
-            className="fixed bottom-0 left-1/2 -translate-x-1/2 z-20 w-full max-w-md bg-white border-t border-[#E5E7EB] p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]"
+            className="fixed bottom-0 left-1/2 -translate-x-1/2 z-20 w-full max-w-md rounded-t-2xl border-t border-[#E5E7EB] bg-white/95 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] backdrop-blur-xl px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:px-4 sm:pt-4 sm:pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
             data-onboarding-footer
           >
             <button
               type="submit"
               onClick={handleSave}
               disabled={loading}
-              className="w-full bg-[#2B8CEE] hover:bg-blue-600 text-white font-semibold py-3.5 px-6 rounded-xl shadow-md shadow-blue-500/20 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-[#2B8CEE] hover:bg-blue-600 text-white font-semibold rounded-xl shadow-md shadow-blue-500/20 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed py-3 px-5 sm:py-3.5 sm:px-6 text-sm sm:text-base"
             >
               {loading 
                 ? "Generating..." 
@@ -1576,7 +1576,7 @@ const HushhUserProfilePage: React.FC = () => {
                     : "Generate Investor Profile"
               }
             </button>
-            <p className="text-xs text-[#6B7280] text-center mt-3 leading-normal px-2">
+            <p className="text-[11px] sm:text-xs text-[#6B7280] text-center mt-2 sm:mt-3 leading-snug px-1 sm:px-2">
               {investorProfile 
                 ? "Update your AI-generated investor profile."
                 : hasOnboardingData
@@ -1588,7 +1588,7 @@ const HushhUserProfilePage: React.FC = () => {
             {/* Go to Home Button */}
             <button
               onClick={() => navigate('/')}
-              className="flex items-center justify-center gap-2 w-full mt-3 py-2.5 text-[#2B8CEE] hover:bg-blue-50 rounded-xl transition-colors font-medium text-sm"
+              className="flex items-center justify-center gap-2 w-full mt-2 sm:mt-3 py-2 sm:py-2.5 text-[#2B8CEE] hover:bg-blue-50 rounded-xl transition-colors font-medium text-sm"
             >
               <Home className="w-4 h-4" />
               Go to Home

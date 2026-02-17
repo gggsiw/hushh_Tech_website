@@ -332,7 +332,7 @@ export function InvestorProfileReview({
   };
 
   return (
-    <Box bg="#FFFFFF" minH="100vh" px={{ base: 6, md: 6 }} py={{ base: 12, md: 12 }}>
+    <Box bg="#FFFFFF" minH="100dvh" px={{ base: 6, md: 6 }} py={{ base: 12, md: 12 }}>
       <VStack spacing={8} align="stretch" maxW="760px" mx="auto">
         {/* Header */}
         <Box textAlign="left">

@@ -130,7 +130,7 @@ const GlobalNDAGate: React.FC<GlobalNDAGateProps> = ({ children, session }) => {
   if (isChecking) {
     return (
       <Box
-        minH="100vh"
+        minH="100dvh"
         display="flex"
         alignItems="center"
         justifyContent="center"

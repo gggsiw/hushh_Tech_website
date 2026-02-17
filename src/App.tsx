@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import Leadership from './components/Leadership';
@@ -26,7 +26,7 @@ import CareersPrivacyPolicy from './pages/career-privacy-policy';
 import CaliforniaPrivacyPolicy from './pages/california-privacy-policy';
 import EUUKPrivacyPolicy from './pages/eu-uk-privacy-policy';
 import DeleteAccountPage from './pages/delete-account';
-import { useState, useEffect, ReactNode, Suspense } from 'react';
+import { useState, useEffect, ReactNode } from 'react';
 import config from './resources/config/config';
 import NDAPopup from './components/NdaForm';
 import Profile from './pages/profile';
@@ -53,16 +53,13 @@ import HushhIDHeroDemo from './pages/hushhid-hero-demo';
 import FinancialLinkPage from './pages/onboarding/FinancialLink';
 import OnboardingStep1 from './pages/onboarding/Step1';
 import OnboardingStep2 from './pages/onboarding/Step2';
-import OnboardingStep3 from './pages/onboarding/Step3';
 import OnboardingStep4 from './pages/onboarding/Step4';
 import OnboardingStep5 from './pages/onboarding/Step5';
 import OnboardingStep6 from './pages/onboarding/Step6';
 import OnboardingStep7 from './pages/onboarding/Step7';
 import OnboardingStep8 from './pages/onboarding/Step8';
 import OnboardingStep9 from './pages/onboarding/Step9';
-const OnboardingStep10 = React.lazy(() => import('./pages/onboarding/Step10'));
 import OnboardingStep11 from './pages/onboarding/Step11';
-import OnboardingStep12 from './pages/onboarding/Step12';
 import OnboardingStep13 from './pages/onboarding/Step13';
 import VerifyIdentityPage from './pages/onboarding/VerifyIdentity';
 import VerifyCompletePage from './pages/onboarding/VerifyComplete';
@@ -102,9 +99,12 @@ const ContentWrapper = ({ children }: { children: ReactNode }) => {
   const isHushhAgent = location.pathname.startsWith('/hushh-agent');
   const isKai = location.pathname.startsWith('/kai');
   const isStudio = location.pathname.startsWith('/studio');
+  const isHushhUserProfile = location.pathname.startsWith('/hushh-user-profile');
+  const isSignNda = location.pathname.startsWith('/sign-nda');
+  const isInvestorProfile = location.pathname.startsWith('/investor-profile');
 
   return (
-    <div className={`${isHomePage || isAuthCallback || isUserRegistration || isOnboarding || isKycFlow || isA2APlayground || isInvestorGuide || isHushhAI || isHushhAgent || isKai || isStudio ? '' : 'mt-20'}`}>
+    <div className={`${isHomePage || isAuthCallback || isUserRegistration || isOnboarding || isKycFlow || isA2APlayground || isInvestorGuide || isHushhAI || isHushhAgent || isKai || isStudio || isHushhUserProfile || isSignNda || isInvestorProfile ? '' : 'mt-20'}`}>
       {children}
     </div>
   );
@@ -251,7 +251,7 @@ function App() {
             } />
             <Route path="/onboarding/step-3" element={
               <ProtectedRoute>
-                <OnboardingStep3 />
+                <Navigate to="/onboarding/step-4" replace />
               </ProtectedRoute>
             } />
             <Route path="/onboarding/step-4" element={
@@ -286,9 +286,7 @@ function App() {
             } />
             <Route path="/onboarding/step-10" element={
               <ProtectedRoute>
-                <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>Loading...</div>}>
-                  <OnboardingStep10 />
-                </Suspense>
+                <Navigate to="/onboarding/step-11" replace />
               </ProtectedRoute>
             } />
             <Route path="/onboarding/step-11" element={
@@ -298,7 +296,7 @@ function App() {
             } />
             <Route path="/onboarding/step-12" element={
               <ProtectedRoute>
-                <OnboardingStep12 />
+                <Navigate to="/onboarding/step-11" replace />
               </ProtectedRoute>
             } />
             <Route path="/onboarding/step-13" element={

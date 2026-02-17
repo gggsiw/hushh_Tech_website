@@ -346,3 +346,58 @@ html[lang="zh"] {
 html {
   transition: direction 0.2s ease;
 }
+
+/* ===========================================
+   Onboarding Mobile Responsiveness
+   =========================================== */
+
+.onboarding-shell {
+  min-height: 100dvh !important;
+  height: 100dvh;
+  width: 100%;
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+.onboarding-shell main {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  padding-bottom: calc(11rem + env(safe-area-inset-bottom, 0px)) !important;
+  scroll-padding-bottom: calc(11rem + env(safe-area-inset-bottom, 0px));
+}
+
+.onboarding-shell [data-onboarding-footer] {
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%);
+  width: min(100%, 500px);
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+@media (max-width: 640px) {
+  .onboarding-shell {
+    max-width: 100% !important;
+    border-left-width: 0 !important;
+    border-right-width: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .onboarding-shell [data-onboarding-footer] {
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+}
+
+/* Global responsive safety */
+html,
+body,
+#root {
+  max-width: 100%;
+  overflow-x: hidden;
+}

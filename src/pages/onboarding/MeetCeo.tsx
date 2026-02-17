@@ -79,7 +79,7 @@ const ShimmerLoader = ({ message }: { message: string }) => (
     className="bg-slate-50 min-h-screen"
     style={{ fontFamily: "'Manrope', sans-serif" }}
   >
-    <div className="relative flex min-h-screen w-full flex-col bg-white max-w-[500px] mx-auto shadow-xl overflow-hidden border-x border-slate-100">
+    <div className="onboarding-shell relative flex min-h-screen w-full flex-col bg-white max-w-[500px] mx-auto shadow-xl overflow-hidden border-x border-slate-100">
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           {/* Shimmer avatar */}
@@ -364,8 +364,13 @@ function MeetCeoPage() {
     navigate('/hushh-user-profile');
   };
 
+  const handleSkipPaymentForNow = () => {
+    sessionStorage.setItem('meet_ceo_payment_skipped', 'true');
+    navigate('/hushh-user-profile');
+  };
+
   const handleBack = () => {
-    navigate('/onboarding/step-12');
+    navigate('/onboarding/step-13');
   };
 
   // Loading/Verifying state with shimmer
@@ -382,7 +387,7 @@ function MeetCeoPage() {
       className="bg-slate-50 min-h-screen"
       style={{ fontFamily: "'Manrope', sans-serif" }}
     >
-      <div className="relative flex min-h-screen w-full flex-col bg-white max-w-[500px] mx-auto shadow-xl overflow-hidden border-x border-slate-100">
+      <div className="onboarding-shell relative flex min-h-screen w-full flex-col bg-white max-w-[500px] mx-auto shadow-xl overflow-hidden border-x border-slate-100">
         
         {/* Sticky Header */}
         <header className="flex items-center px-4 pt-4 pb-2 bg-white sticky top-0 z-10">
@@ -689,8 +694,17 @@ function MeetCeoPage() {
                         Redirecting...
                       </span>
                     ) : (
-                      'Complete Registration — $1'
+                      'Complete Registration - $1'
                     )}
+                  </button>
+
+                  {/* Skip for testing */}
+                  <button
+                    onClick={handleSkipPaymentForNow}
+                    disabled={loading}
+                    className="flex w-full cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white py-3 text-slate-700 text-sm font-semibold transition-all hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    Skip for now
                   </button>
 
                   {/* Back Button */}
@@ -741,7 +755,7 @@ function MeetCeoPage() {
                   disabled={bookingInProgress}
                   className="flex w-full cursor-pointer items-center justify-center rounded-full bg-transparent py-2 text-slate-500 text-sm font-bold hover:text-slate-800 transition-colors"
                 >
-                  Skip — I'll book later
+                  Skip - I'll book later
                 </button>
               </div>
             )}

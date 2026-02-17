@@ -174,7 +174,7 @@ export default function HushhAILoginPage() {
         </motion.div>
 
         {/* Sign Up Link */}
-        <motion.div
+        {/* <motion.div
           className="w-full text-center mt-8"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -189,7 +189,7 @@ export default function HushhAILoginPage() {
               Sign up
             </Link>
           </p>
-        </motion.div>
+        </motion.div> */}
 
         {/* Terms and Privacy */}
         <motion.div
