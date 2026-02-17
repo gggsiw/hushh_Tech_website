@@ -681,7 +681,7 @@ const HushhUserProfilePage: React.FC = () => {
       <div className="max-w-md mx-auto min-h-screen flex flex-col relative pb-8">
         
         {/* Sticky Header */}
-        <header className="flex items-center justify-between px-4 py-4 sticky top-0 bg-white z-10 border-b border-transparent">
+        <header className="flex items-center justify-between px-4 py-4 sticky top-28 bg-white z-10 border-b border-transparent">
           <button 
             onClick={handleBack}
             className="p-2 -ml-2 text-[#111827] hover:bg-gray-100 rounded-full transition-colors"

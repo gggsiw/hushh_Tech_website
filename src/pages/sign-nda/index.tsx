@@ -209,11 +209,11 @@ const SignNDAPage: React.FC = () => {
   };
 
   return (
-    <Box minH="100vh" bg={COLORS.bg}>
+    <Box minH="100dvh" bg={COLORS.bg}>
       {/* Hero Header - White bg with bright accent */}
       <Box
         bg={COLORS.bg}
-        pt={{ base: 10, md: 16 }}
+        pt={{ base: 6, md: 16 }}
         pb={{ base: 8, md: 12 }}
         px={4}
         borderBottom="1px solid"

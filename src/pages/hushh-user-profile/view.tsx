@@ -99,7 +99,7 @@ const ViewPreferencesPage: React.FC = () => {
 
   if (loading) {
     return (
-      <Box minH="100vh" bg="#FFFFFF" display="flex" alignItems="center" justifyContent="center">
+      <Box minH="100dvh" bg="#FFFFFF" display="flex" alignItems="center" justifyContent="center">
         <Text>Loading profile...</Text>
       </Box>
     );
@@ -107,7 +107,7 @@ const ViewPreferencesPage: React.FC = () => {
 
   if (!profileData) {
     return (
-      <Box minH="100vh" bg="#FFFFFF" display="flex" alignItems="center" justifyContent="center">
+      <Box minH="100dvh" bg="#FFFFFF" display="flex" alignItems="center" justifyContent="center">
         <VStack spacing={4}>
           <Text fontSize="xl" color="#434343">No profile found</Text>
           <Button
@@ -134,7 +134,7 @@ const ViewPreferencesPage: React.FC = () => {
   const profileUrl = `https://hushhtech.com/investor/${profileData.user_id}`;
 
   return (
-    <Box minH="100vh" bg="#FFFFFF" py={{ base: 6, md: 8 }} px={{ base: 6, md: 8 }}>
+    <Box minH="100dvh" bg="#FFFFFF" py={{ base: 6, md: 8 }} px={{ base: 6, md: 8 }}>
       <VStack spacing={8} align="stretch" maxW="760px" mx="auto">
         {/* Top row */}
         <HStack justify="space-between" align="center" spacing={3}>

@@ -9,8 +9,33 @@
 
 import { describe, it, expect } from 'vitest';
 
-const SUPABASE_URL = 'https://ibsisfnjxeowvdtvgzff.supabase.co';
-const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlic2lzZm5qeGVvd3ZkdHZnemZmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDU1OTU3OCwiZXhwIjoyMDgwMTM1NTc4fQ.j6SSw41LwGzXGAW0U_mQh6hGGnFekOE7GV__xevJY2M';
+/**
+ * NOTE:
+ * These are true integration tests that hit a live Supabase project.
+ * They should NOT run by default in CI/build unless secrets are provided.
+ *
+ * Provide the following env vars to enable:
+ * - `NDA_TEST_SUPABASE_URL`
+ * - `NDA_TEST_SERVICE_ROLE_KEY`
+ *
+ * Optional fallbacks:
+ * - `VITE_SUPABASE_URL` (URL only)
+ * - `SUPABASE_SERVICE_ROLE_KEY` (key only)
+ */
+const SUPABASE_URL =
+  process.env.NDA_TEST_SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL ||
+  '';
+
+const SERVICE_KEY =
+  process.env.NDA_TEST_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  '';
+
+const shouldRunIntegration = Boolean(SUPABASE_URL && SERVICE_KEY);
+
+// Gate all suites in this file.
+const describeIntegration = shouldRunIntegration ? describe : describe.skip;
 
 const headers = {
   'apikey': SERVICE_KEY,
@@ -18,7 +43,7 @@ const headers = {
   'Content-Type': 'application/json',
 };
 
-describe('NDA Database Schema', () => {
+describeIntegration('NDA Database Schema', () => {
   it('should have nda_signed_at column in onboarding_data', async () => {
     const response = await fetch(
       `${SUPABASE_URL}/rest/v1/onboarding_data?select=nda_signed_at&limit=1`,
@@ -74,7 +99,7 @@ describe('NDA Database Schema', () => {
   });
 });
 
-describe('NDA RPC Functions', () => {
+describeIntegration('NDA RPC Functions', () => {
   it('check_user_nda_status should return correct structure for non-existent user', async () => {
     const response = await fetch(
       `${SUPABASE_URL}/rest/v1/rpc/check_user_nda_status`,
@@ -116,7 +141,7 @@ describe('NDA RPC Functions', () => {
   });
 });
 
-describe('NDA Admin Query - onboarding_data table', () => {
+describeIntegration('NDA Admin Query - onboarding_data table', () => {
   it('should be able to query onboarding_data table (not investor_profiles)', async () => {
     const response = await fetch(
       `${SUPABASE_URL}/rest/v1/onboarding_data?select=user_id,nda_signed_at,nda_pdf_url,nda_version&limit=5`,
@@ -149,7 +174,7 @@ describe('NDA Admin Query - onboarding_data table', () => {
   });
 });
 
-describe('NDA Notification Edge Function', () => {
+describeIntegration('NDA Notification Edge Function', () => {
   it('should successfully call nda-signed-notification endpoint', async () => {
     const response = await fetch(
       `${SUPABASE_URL}/functions/v1/nda-signed-notification`,
@@ -210,7 +235,7 @@ describe('NDA Notification Edge Function', () => {
   });
 });
 
-describe('NDA PDF URL Storage', () => {
+describeIntegration('NDA PDF URL Storage', () => {
   it('should be able to update nda_pdf_url in onboarding_data', async () => {
     // First, get an existing user_id
     const getResponse = await fetch(

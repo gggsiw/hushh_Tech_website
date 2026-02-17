@@ -170,7 +170,7 @@ function InvestorProfilePage() {
   // Loading state
   if (step === "loading") {
     return (
-      <Container maxW="container.xl" py={20}>
+      <Container maxW="container.xl" py={{ base: 12, md: 20 }}>
         <Center>
           <VStack spacing={4}>
             <Spinner size="xl" color="blue.500" />
@@ -354,7 +354,7 @@ function InvestorProfilePage() {
   // Error state
   if (error && step === "form") {
     return (
-      <Container maxW="container.xl" py={20}>
+      <Container maxW="container.xl" py={{ base: 12, md: 20 }}>
         <Center>
           <VStack spacing={4}>
             <Text fontSize="xl" fontWeight="500" color="red.500">
@@ -371,7 +371,7 @@ function InvestorProfilePage() {
   }
 
   return (
-    <Box minH="100vh" bg="gray.50" py={8}>
+    <Box minH="100dvh" bg="gray.50" py={{ base: 6, md: 8 }}>
       <Container maxW="container.xl">
         {step === "form" && (
           <InvestorProfileForm

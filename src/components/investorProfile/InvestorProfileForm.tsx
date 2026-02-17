@@ -113,7 +113,7 @@ export function InvestorProfileForm({ onSubmit, isLoading = false, initialData }
   return (
     <Box
       bg="white"
-      minH="100vh"
+      minH="100dvh"
       px={{ base: 6, md: 6 }}
       py={{ base: 12, md: 12 }}
       style={{ fontFamily: 'Inter, -apple-system, system-ui, "SF Pro Text", sans-serif' }}

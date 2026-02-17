@@ -168,7 +168,7 @@ const PrivacyControlsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <Box minH="100vh" bg="white" display="flex" alignItems="center" justifyContent="center">
+      <Box minH="100dvh" bg="white" display="flex" alignItems="center" justifyContent="center">
         <VStack spacing={4}>
           <Spinner size="xl" color={tokens.blue} thickness="4px" />
           <Text color={tokens.secondary}>Loading privacy settings...</Text>
@@ -182,7 +182,7 @@ const PrivacyControlsPage: React.FC = () => {
   }
 
   return (
-    <Box minH="100vh" bg="white" py={{ base: 8, md: 12 }}>
+    <Box minH="100dvh" bg="white" py={{ base: 8, md: 12 }}>
       <Box maxW="960px" mx="auto" px={{ base: 4, md: 6 }}>
         {/* Header */}
         <VStack align="stretch" spacing={4} mb={8}>
