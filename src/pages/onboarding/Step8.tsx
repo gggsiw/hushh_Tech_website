@@ -4,7 +4,7 @@
  * Collects user's residential address. Auto-detects location via GPS
  * (reverse geocoded through GCP / Supabase Edge Function) with IP fallback.
  *
- * Data priority: Saved address → GPS detection → Enriched profile → Step 6 country.
+ * Data priority: Saved address → GPS detection → Step 6 country.
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -106,28 +106,7 @@ function OnboardingStep8() {
       // Priority 2: GPS / IP auto-detection
       await detectAndApply(user.id);
 
-      // Priority 3: Enriched profile fallback
-      if (!addressLine1) {
-        try {
-          const { data: profile } = await config.supabaseClient
-            .from('user_enriched_profiles')
-            .select('address')
-            .eq('user_id', user.id)
-            .maybeSingle();
-
-          if (profile?.address) {
-            const addr = profile.address as Record<string, string>;
-            if (addr.line1) setAddressLine1(addr.line1);
-            if (addr.line2) setAddressLine2(addr.line2);
-            if (addr.zipCode) setZipCode(addr.zipCode);
-            const code = locationService.mapCountryToIsoCode(addr.countryCode || addr.country || '');
-            dropdowns.applyDetectedLocation(code, undefined, addr.state, addr.city);
-            return;
-          }
-        } catch { /* ignore */ }
-      }
-
-      // Priority 4: Residence country from Step 6
+      // Priority 3: Residence country from Step 6
       if (saved?.residence_country) {
         const code = locationService.mapCountryToIsoCode(saved.residence_country);
         dropdowns.applyDetectedLocation(code);
