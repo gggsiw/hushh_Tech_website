@@ -4,7 +4,7 @@ import config from '../../resources/config/config';
 import { upsertOnboardingData } from '../../services/onboarding/upsertOnboardingData';
 import type { ReferralSource } from '../../types/onboarding';
 import { useFooterVisibility } from '../../utils/useFooterVisibility';
-import OnboardingStepProgress from '../../components/onboarding/OnboardingStepProgress';
+import { OnboardingStepProgress } from '../../components/onboarding/OnboardingStepProgress';
 
 // Back arrow icon
 const BackIcon = () => (
@@ -226,3 +226,4 @@ export default function OnboardingStep2() {
     </div>
   );
 }
+

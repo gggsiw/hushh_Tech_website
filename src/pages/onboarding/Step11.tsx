@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import config from '../../resources/config/config';
 import { upsertOnboardingData } from '../../services/onboarding/upsertOnboardingData';
 import { useFooterVisibility } from '../../utils/useFooterVisibility';
-import OnboardingStepProgress from '../../components/onboarding/OnboardingStepProgress';
+import { OnboardingStepProgress } from '../../components/onboarding/OnboardingStepProgress';
 
 type RecurringFrequency = 'once_a_month' | 'twice_a_month' | 'weekly' | 'every_other_week';
 
@@ -992,3 +992,4 @@ function OnboardingStep11() {
 }
 
 export default OnboardingStep11;
+

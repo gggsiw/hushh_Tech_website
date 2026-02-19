@@ -6,7 +6,7 @@ import { useFooterVisibility } from '../../utils/useFooterVisibility';
 import { locationService, LocationData, COUNTRY_CODE_TO_NAME } from '../../services/location';
 import PermissionHelpModal from '../../components/PermissionHelpModal';
 import LocationPermissionModal from '../../components/LocationPermissionModal';
-import OnboardingStepProgress from '../../components/onboarding/OnboardingStepProgress';
+import { OnboardingStepProgress } from '../../components/onboarding/OnboardingStepProgress';
 
 // Back arrow icon
 const BackIcon = () => (
@@ -655,3 +655,4 @@ export default function OnboardingStep4() {
     </div>
   );
 }
+

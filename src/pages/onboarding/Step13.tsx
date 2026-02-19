@@ -4,7 +4,7 @@ import config from '../../resources/config/config';
 import { upsertOnboardingData } from '../../services/onboarding/upsertOnboardingData';
 import { useFooterVisibility } from '../../utils/useFooterVisibility';
 import { fetchAuthNumbers } from '../../services/plaid/plaidService';
-import OnboardingStepProgress from '../../components/onboarding/OnboardingStepProgress';
+import { OnboardingStepProgress } from '../../components/onboarding/OnboardingStepProgress';
 
 // SVG Icons
 const BackIcon = () => (

@@ -14,7 +14,7 @@ import { useFooterVisibility } from '../../utils/useFooterVisibility';
 import { useLocationDropdowns } from '../../hooks/useLocationDropdowns';
 import { locationService } from '../../services/location/locationService';
 import { SearchableSelect } from '../../components/onboarding/SearchableSelect';
-import OnboardingStepProgress from '../../components/onboarding/OnboardingStepProgress';
+import { OnboardingStepProgress } from '../../components/onboarding/OnboardingStepProgress';
 
 // ─── Validation helpers ─────────────────────────────────────────────────────
 

@@ -5,7 +5,7 @@ import { upsertOnboardingData } from '../../services/onboarding/upsertOnboarding
 import type { AccountStructure } from '../../types/onboarding';
 import { useFooterVisibility } from '../../utils/useFooterVisibility';
 import { locationService } from '../../services/location';
-import OnboardingStepProgress from '../../components/onboarding/OnboardingStepProgress';
+import { OnboardingStepProgress } from '../../components/onboarding/OnboardingStepProgress';
 
 // Back arrow icon
 const BackIcon = () => (
@@ -336,3 +336,4 @@ export default function OnboardingStep5() {
     </div>
   );
 }
+

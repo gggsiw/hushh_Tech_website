@@ -1,18 +1,21 @@
 import { Progress } from '../ui/progress';
 
-interface OnboardingStepProgressProps {
-  currentStep: number;
-  totalSteps?: number;
-  heading?: string;
-}
+const DEFAULT_ONBOARDING_VISIBLE_STEPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13];
 
-export default function OnboardingStepProgress({
+export function OnboardingStepProgress({
   currentStep,
   totalSteps = 13,
   heading = 'Onboarding progress',
+  displayStep,
+  visibleSteps,
 }: OnboardingStepProgressProps) {
-  const safeTotal = Math.max(1, totalSteps);
-  const safeStep = Math.min(Math.max(1, currentStep), safeTotal);
+  const resolvedVisibleSteps = resolveVisibleSteps(visibleSteps, totalSteps);
+  const safeTotal = resolvedVisibleSteps.length;
+  const safeStep = resolveDisplayStep({
+    currentStep,
+    displayStep,
+    resolvedVisibleSteps,
+  });
   const progressPercentage = Math.round((safeStep / safeTotal) * 100);
 
   return (
@@ -60,4 +63,66 @@ export default function OnboardingStepProgress({
       </div>
     </section>
   );
+}
+
+function resolveVisibleSteps(
+  visibleSteps: OnboardingStepProgressProps['visibleSteps'],
+  totalSteps: number,
+): number[] {
+  if (Array.isArray(visibleSteps)) {
+    const sanitized = Array.from(
+      new Set(
+        visibleSteps
+          .map((value) => Math.floor(value))
+          .filter((value) => Number.isFinite(value) && value > 0),
+      ),
+    ).sort((a, b) => a - b);
+
+    if (sanitized.length > 0) {
+      return sanitized;
+    }
+  }
+
+  if (typeof visibleSteps === 'number' && Number.isFinite(visibleSteps)) {
+    const count = Math.max(1, Math.floor(visibleSteps));
+    return Array.from({ length: count }, (_, index) => index + 1);
+  }
+
+  if (totalSteps === 13) {
+    return DEFAULT_ONBOARDING_VISIBLE_STEPS;
+  }
+
+  const safeTotal = Math.max(1, Math.floor(totalSteps));
+  return Array.from({ length: safeTotal }, (_, index) => index + 1);
+}
+
+function resolveDisplayStep({
+  currentStep,
+  displayStep,
+  resolvedVisibleSteps,
+}: {
+  currentStep: number;
+  displayStep?: number;
+  resolvedVisibleSteps: number[];
+}): number {
+  const maxStep = resolvedVisibleSteps.length;
+
+  if (typeof displayStep === 'number' && Number.isFinite(displayStep)) {
+    return Math.min(Math.max(1, Math.floor(displayStep)), maxStep);
+  }
+
+  const mappedIndex = resolvedVisibleSteps.indexOf(currentStep);
+  if (mappedIndex !== -1) {
+    return mappedIndex + 1;
+  }
+
+  return Math.min(Math.max(1, Math.floor(currentStep)), maxStep);
+}
+
+interface OnboardingStepProgressProps {
+  currentStep: number;
+  totalSteps?: number;
+  heading?: string;
+  displayStep?: number;
+  visibleSteps?: number[] | number;
 }

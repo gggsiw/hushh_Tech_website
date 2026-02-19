@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import config from '../../resources/config/config';
 import { upsertOnboardingData } from '../../services/onboarding/upsertOnboardingData';
 import { useFooterVisibility } from '../../utils/useFooterVisibility';
-import OnboardingStepProgress from '../../components/onboarding/OnboardingStepProgress';
+import { OnboardingStepProgress } from '../../components/onboarding/OnboardingStepProgress';
 
 // Back arrow icon (same as Step3)
 const BackIcon = () => (
@@ -118,12 +118,12 @@ function OnboardingStep9() {
         const savedDob = formatIsoToDisplay(data.date_of_birth);
         if (savedDob) {
           setDob(savedDob);
-          console.log('[Step11] âœ… Restored saved DOB:', savedDob);
+          console.log('[Step9] Restored saved DOB');
         }
       }
       if (data?.ssn_encrypted && data.ssn_encrypted !== '999-99-9999') {
         setSsn(data.ssn_encrypted);
-        console.log('[Step11] âœ… Restored saved SSN');
+        console.log('[Step9] Restored saved SSN');
       }
     };
 
@@ -173,7 +173,6 @@ function OnboardingStep9() {
 
   // SSN is OPTIONAL - user can continue with just DOB
   const isFormValid = dob.length === 10;  // Only DOB is required
-  const canSkip = dob.length === 10;  // Can skip SSN if DOB is filled
 
   const handleContinue = async () => {
     if (!isFormValid) {
@@ -220,7 +219,7 @@ function OnboardingStep9() {
   };
 
   const handleSkip = async () => {
-    if (!canSkip) {
+    if (!isFormValid) {
       setError('Please enter your date of birth before skipping');
       return;
     }
@@ -409,9 +408,9 @@ function OnboardingStep9() {
               {/* Skip Button */}
               <button
                 onClick={handleSkip}
-                disabled={!canSkip || loading}
+                disabled={!isFormValid || loading}
                 className={`flex w-full cursor-pointer items-center justify-center rounded-full bg-transparent py-2 text-slate-500 text-sm font-semibold hover:text-slate-800 transition-colors ${
-                  !canSkip || loading ? 'opacity-50 cursor-not-allowed' : ''
+                  !isFormValid || loading ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               >
                 Skip for now
@@ -432,3 +431,4 @@ function OnboardingStep9() {
 }
 
 export default OnboardingStep9;
+
