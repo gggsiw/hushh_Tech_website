@@ -460,6 +460,10 @@ function OnboardingStep11() {
     navigate('/onboarding/step-9');
   };
 
+  const handleSkip = () => {
+    navigate('/onboarding/step-13');
+  };
+
   // Generate units summary text
   const getUnitsSummary = () => {
     const parts = [];
@@ -503,6 +507,8 @@ function OnboardingStep11() {
           <span className="material-symbols-outlined text-3xl -mr-1" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400" }}>chevron_left</span>
           <span className="text-[17px] leading-none pb-[2px]">Back</span>
         </button>
+        <span className="font-semibold text-[17px] text-black">Setup</span>
+        <button onClick={handleSkip} className="text-[17px] text-[#007AFF] font-normal active:opacity-50 transition-opacity">Skip</button>
       </nav>
 
       <main className="flex-1 overflow-y-auto max-w-lg mx-auto w-full px-4 pt-4 pb-48">
