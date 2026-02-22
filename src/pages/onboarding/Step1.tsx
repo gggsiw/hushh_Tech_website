@@ -270,11 +270,11 @@ export default function OnboardingStep1() {
      ═══════════════════════════════════════════════ */
   return (
     <div
-      className="bg-[#F2F2F7] min-h-[100dvh] pb-32"
+      className="bg-[#F2F2F7] min-h-[100dvh] pb-52"
       style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif", WebkitFontSmoothing: 'antialiased' }}
     >
       {/* ═══ iOS Navigation Bar ═══ */}
-      <nav className="sticky top-0 z-50 bg-[#F2F2F7]/90 backdrop-blur-md border-b border-[#C6C6C8]/30 h-11 flex items-center justify-between px-4">
+      <nav className="sticky top-0 z-50 bg-[#F2F2F7]/90 backdrop-blur-md border-b border-[#C6C6C8]/30 flex items-center justify-between px-4" style={{ paddingTop: 'calc(env(safe-area-inset-top, 12px) + 4px)', paddingBottom: '8px', minHeight: '56px' }}>
         <button
           onClick={handleBack}
           className="text-[#007AFF] flex items-center -ml-1"
