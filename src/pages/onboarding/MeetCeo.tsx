@@ -1,121 +1,14 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import config from '../../resources/config/config';
-import { upsertOnboardingData } from '../../services/onboarding/upsertOnboardingData';
 import { useFooterVisibility } from '../../utils/useFooterVisibility';
 
-// Types for calendar booking
-interface TimeSlot {
-  startTime: string;
-  endTime: string;
-  available: boolean;
-}
-
-interface DayAvailability {
-  date: string;
-  slots: TimeSlot[];
-}
-
-interface CalendarData {
-  ceo: { name: string; email: string };
-  timezone: string;
-  meetingDuration: number;
-  availability: DayAvailability[];
-}
-
+// Types
+interface TimeSlot { startTime: string; endTime: string; available: boolean; }
+interface DayAvailability { date: string; slots: TimeSlot[]; }
+interface CalendarData { ceo: { name: string; email: string }; timezone: string; meetingDuration: number; availability: DayAvailability[]; }
 type PaymentState = 'loading' | 'not_paid' | 'verifying' | 'paid' | 'booked';
-
-// Back arrow icon
-const BackIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M19 12H5M12 19l-7-7 7-7" />
-  </svg>
-);
-
-// Shield check icon
-const ShieldCheckIcon = ({ className = "" }: { className?: string }) => (
-  <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
-  </svg>
-);
-
-// Star icon
-const StarIcon = ({ className = "" }: { className?: string }) => (
-  <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-  </svg>
-);
-
-// Coin icon
-const CoinIcon = ({ className = "" }: { className?: string }) => (
-  <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z"/>
-  </svg>
-);
-
-// Calendar icon
-const CalendarIcon = ({ className = "" }: { className?: string }) => (
-  <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm-8 4H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/>
-  </svg>
-);
-
-// Lock icon
-const LockIcon = ({ className = "" }: { className?: string }) => (
-  <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
-  </svg>
-);
-
-// Checkmark icon
-const CheckIcon = ({ className = "" }: { className?: string }) => (
-  <svg className={className} width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
-);
-
-// Shimmer loading component
-const ShimmerLoader = ({ message }: { message: string }) => (
-  <div 
-    className="bg-slate-50 min-h-screen"
-    style={{ fontFamily: "'Manrope', sans-serif" }}
-  >
-    <div className="onboarding-shell relative flex min-h-screen w-full flex-col bg-white max-w-[500px] mx-auto shadow-xl overflow-hidden border-x border-slate-100">
-      <div className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          {/* Shimmer avatar */}
-          <div className="flex justify-center mb-8">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 animate-pulse" />
-          </div>
-          
-          {/* Shimmer title */}
-          <div className="space-y-3 mb-8">
-            <div className="h-8 w-3/4 mx-auto bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 rounded-lg animate-pulse" />
-            <div className="h-4 w-1/2 mx-auto bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 rounded animate-pulse" />
-          </div>
-
-          {/* Spinning loader */}
-          <div className="flex flex-col items-center gap-4">
-            <div className="relative w-16 h-16">
-              <div className="absolute inset-0 rounded-full border-4 border-slate-200" />
-              <div 
-                className="absolute inset-0 rounded-full border-4 border-t-[#2b8cee] animate-spin"
-                style={{ animationDuration: '1s' }}
-              />
-            </div>
-            <p className="text-lg text-slate-600 font-medium">{message}</p>
-          </div>
-
-          {/* Shimmer content blocks */}
-          <div className="mt-8 space-y-4">
-            <div className="h-20 bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 rounded-xl animate-pulse" />
-            <div className="h-14 bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 rounded-full animate-pulse" />
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-);
+const VALID_COUPON = 'ILOVEHUSHH';
 
 function MeetCeoPage() {
   const navigate = useNavigate();
@@ -125,660 +18,391 @@ function MeetCeoPage() {
   const [error, setError] = useState<string | null>(null);
   const [hushhCoins, setHushhCoins] = useState(0);
   const isFooterVisible = useFooterVisibility();
-  
-  // Calendar booking state
+
+  // Coupon state
+  const [showCoupon, setShowCoupon] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+
+  // Calendar state
   const [calendarData, setCalendarData] = useState<CalendarData | null>(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [bookingInProgress, setBookingInProgress] = useState(false);
-  const [meetLink, setMeetLink] = useState<string | null>(null);
 
-  // Scroll to top on mount
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
-
-  // Check payment status on mount
-  useEffect(() => {
-    checkPaymentStatus();
-  }, []);
+  useEffect(() => { window.scrollTo({ top: 0 }); }, []);
+  useEffect(() => { checkPaymentStatus(); }, []);
 
   // Handle Stripe callback
   useEffect(() => {
     const payment = searchParams.get('payment');
     const sessionId = searchParams.get('session_id');
-
-    if (payment === 'success' && sessionId) {
-      verifyPayment(sessionId);
-    } else if (payment === 'cancel') {
-      setError('Payment was cancelled. Please try again.');
-      setPaymentState('not_paid');
-    }
+    if (payment === 'success' && sessionId) verifyPayment(sessionId);
+    else if (payment === 'cancel') { setError('Payment cancelled. Try again.'); setPaymentState('not_paid'); }
   }, [searchParams]);
 
-  const checkPaymentStatus = async () => {
-    if (!config.supabaseClient) {
-      setPaymentState('not_paid');
-      return;
-    }
+  // Fetch calendar when paid
+  useEffect(() => { if (paymentState === 'paid') fetchCalendarSlots(); }, [paymentState]);
 
+  /* ── API Handlers ── */
+
+  const checkPaymentStatus = async () => {
+    if (!config.supabaseClient) { setPaymentState('not_paid'); return; }
     try {
       const { data: { user } } = await config.supabaseClient.auth.getUser();
-      if (!user) {
-        navigate('/login');
-        return;
-      }
-
-      // Check if user has already paid
+      if (!user) { navigate('/login'); return; }
       const { data: payment } = await config.supabaseClient
-        .from('ceo_meeting_payments')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
+        .from('ceo_meeting_payments').select('*').eq('user_id', user.id).maybeSingle();
       if (payment?.payment_status === 'completed') {
         setHushhCoins(payment.hushh_coins_awarded || 100);
-        if (payment.calendly_booked) {
-          setPaymentState('booked');
-        } else {
-          setPaymentState('paid');
-        }
-      } else {
-        setPaymentState('not_paid');
-      }
-    } catch (err) {
-      console.error('Error checking payment status:', err);
-      setPaymentState('not_paid');
-    }
+        setPaymentState(payment.calendly_booked ? 'booked' : 'paid');
+      } else { setPaymentState('not_paid'); }
+    } catch { setPaymentState('not_paid'); }
   };
 
   const verifyPayment = async (sessionId: string) => {
-    setPaymentState('verifying');
-    setError(null);
-
-    try {
-      const { data: { session } } = await config.supabaseClient!.auth.getSession();
-      if (!session) {
-        throw new Error('Not authenticated');
-      }
-
-      const response = await fetch(
-        `${config.SUPABASE_URL}/functions/v1/onboarding-verify-payment`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ sessionId }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (result.success) {
-        setHushhCoins(result.hushhCoinsAwarded || 100);
-        setPaymentState('paid');
-        // Clear URL params
-        window.history.replaceState({}, '', '/onboarding/meet-ceo');
-      } else {
-        throw new Error(result.error || 'Payment verification failed');
-      }
-    } catch (err: any) {
-      console.error('Payment verification error:', err);
-      setError(err.message || 'Failed to verify payment');
-      setPaymentState('not_paid');
-    }
-  };
-
-  const handlePayment = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { data: { session } } = await config.supabaseClient!.auth.getSession();
-      if (!session) {
-        throw new Error('Not authenticated');
-      }
-
-      const response = await fetch(
-        `${config.SUPABASE_URL}/functions/v1/onboarding-create-checkout`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({}),
-        }
-      );
-
-      const result = await response.json();
-
-      if (result.alreadyPaid) {
-        setPaymentState('paid');
-        return;
-      }
-
-      if (result.checkoutUrl) {
-        window.location.href = result.checkoutUrl;
-      } else {
-        throw new Error(result.error || 'Failed to create checkout session');
-      }
-    } catch (err: any) {
-      console.error('Payment error:', err);
-      setError(err.message || 'Failed to start payment');
-      setLoading(false);
-    }
-  };
-
-  // Fetch calendar availability when paid
-  const fetchCalendarSlots = async () => {
-    setLoadingSlots(true);
-    try {
-      const response = await fetch(
-        `${config.SUPABASE_URL}/functions/v1/ceo-calendar-booking?days=14`,
-        { method: 'GET' }
-      );
-      const data = await response.json();
-      if (data.success) {
-        setCalendarData(data);
-        // Auto-select first available date
-        if (data.availability?.length > 0) {
-          setSelectedDate(data.availability[0].date);
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching calendar slots:', err);
-    } finally {
-      setLoadingSlots(false);
-    }
-  };
-
-  // Book meeting with Google Calendar
-  const handleBookMeeting = async () => {
-    if (!selectedSlot) return;
-    setBookingInProgress(true);
-    setError(null);
-
+    setPaymentState('verifying'); setError(null);
     try {
       const { data: { session } } = await config.supabaseClient!.auth.getSession();
       if (!session) throw new Error('Not authenticated');
-
-      const { data: { user } } = await config.supabaseClient!.auth.getUser();
-      const userName = user?.user_metadata?.full_name || 'Hushh User';
-
-      const response = await fetch(
-        `${config.SUPABASE_URL}/functions/v1/ceo-calendar-booking`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            startTime: selectedSlot.startTime,
-            endTime: selectedSlot.endTime,
-            attendeeName: userName,
-          }),
-        }
-      );
-
-      const result = await response.json();
+      const res = await fetch(`${config.SUPABASE_URL}/functions/v1/onboarding-verify-payment`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ sessionId }),
+      });
+      const result = await res.json();
       if (result.success) {
-        setMeetLink(result.meetLink);
-        setPaymentState('booked');
-      } else {
-        throw new Error(result.error || 'Booking failed');
-      }
-    } catch (err: any) {
-      console.error('Booking error:', err);
-      setError(err.message || 'Failed to book meeting');
-    } finally {
-      setBookingInProgress(false);
-    }
+        setHushhCoins(result.hushhCoinsAwarded || 100);
+        setPaymentState('paid');
+        window.history.replaceState({}, '', '/onboarding/meet-ceo');
+      } else throw new Error(result.error || 'Verification failed');
+    } catch (err: any) { setError(err.message); setPaymentState('not_paid'); }
   };
 
-  // Trigger fetch when paid
-  useEffect(() => {
-    if (paymentState === 'paid') {
-      fetchCalendarSlots();
-    }
-  }, [paymentState]);
-
-  const handleCalendlyBooked = async () => {
-    // Mark as booked in database
-    if (config.supabaseClient) {
-      const { data: { user } } = await config.supabaseClient.auth.getUser();
-      if (user) {
-        await config.supabaseClient
-          .from('ceo_meeting_payments')
-          .update({ calendly_booked: true, updated_at: new Date().toISOString() })
-          .eq('user_id', user.id);
-      }
-    }
-    setPaymentState('booked');
+  const handlePayment = async () => {
+    setLoading(true); setError(null);
+    try {
+      const { data: { session } } = await config.supabaseClient!.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+      const res = await fetch(`${config.SUPABASE_URL}/functions/v1/onboarding-create-checkout`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({}),
+      });
+      const result = await res.json();
+      if (result.alreadyPaid) { setPaymentState('paid'); return; }
+      if (result.checkoutUrl) window.location.href = result.checkoutUrl;
+      else throw new Error(result.error || 'Checkout failed');
+    } catch (err: any) { setError(err.message); setLoading(false); }
   };
 
-  const handleContinueToProfile = () => {
-    navigate('/hushh-user-profile');
+  const handleCouponRedeem = async () => {
+    setCouponError(null);
+    const code = couponCode.trim().toUpperCase();
+    if (!code) { setCouponError('Please enter a coupon code.'); return; }
+    if (code !== VALID_COUPON) { setCouponError('Invalid coupon code. Please try again.'); return; }
+    setCouponLoading(true);
+    try {
+      const { data: { user } } = await config.supabaseClient!.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      // Upsert payment record with coupon
+      await config.supabaseClient!.from('ceo_meeting_payments').upsert({
+        user_id: user.id, payment_status: 'completed', payment_method: 'coupon',
+        coupon_code: code, hushh_coins_awarded: 100, amount: 0, currency: 'usd',
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' });
+      setHushhCoins(100);
+      setPaymentState('paid');
+    } catch (err: any) { setCouponError(err.message || 'Failed to redeem coupon'); }
+    finally { setCouponLoading(false); }
   };
 
-  const handleSkipPaymentForNow = () => {
-    sessionStorage.setItem('meet_ceo_payment_skipped', 'true');
-    navigate('/hushh-user-profile');
+  const fetchCalendarSlots = async () => {
+    setLoadingSlots(true);
+    try {
+      const res = await fetch(`${config.SUPABASE_URL}/functions/v1/ceo-calendar-booking?days=14`);
+      const data = await res.json();
+      if (data.success) { setCalendarData(data); if (data.availability?.length) setSelectedDate(data.availability[0].date); }
+    } catch (err) { console.error('Calendar fetch error:', err); }
+    finally { setLoadingSlots(false); }
   };
 
-  const handleBack = () => {
-    navigate('/onboarding/step-13');
+  const handleBookMeeting = async () => {
+    if (!selectedSlot) return;
+    setBookingInProgress(true); setError(null);
+    try {
+      const { data: { session } } = await config.supabaseClient!.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+      const { data: { user } } = await config.supabaseClient!.auth.getUser();
+      const res = await fetch(`${config.SUPABASE_URL}/functions/v1/ceo-calendar-booking`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ startTime: selectedSlot.startTime, endTime: selectedSlot.endTime, attendeeName: user?.user_metadata?.full_name || 'Hushh User' }),
+      });
+      const result = await res.json();
+      if (result.success) { setPaymentState('booked'); } else throw new Error(result.error || 'Booking failed');
+    } catch (err: any) { setError(err.message); }
+    finally { setBookingInProgress(false); }
   };
 
-  // Loading/Verifying state with shimmer
+  const handleContinue = () => navigate('/hushh-user-profile');
+  const handleBack = () => navigate('/onboarding/step-13');
+
+  /* ── Shimmer Loader ── */
   if (paymentState === 'loading' || paymentState === 'verifying') {
     return (
-      <ShimmerLoader 
-        message={paymentState === 'verifying' ? 'Verifying your payment...' : 'Loading...'} 
-      />
+      <div className="bg-white min-h-[100dvh] flex items-center justify-center" style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif" }}>
+        <div className="text-center px-8">
+          <div className="w-16 h-16 mx-auto mb-6 rounded-full border-4 border-gray-200 border-t-[#007AFF] animate-spin" />
+          <p className="text-[17px] text-[#8E8E93] font-medium">{paymentState === 'verifying' ? 'Verifying payment...' : 'Loading...'}</p>
+        </div>
+      </div>
     );
   }
 
+  /* ── RENDER ── */
   return (
-    <div 
-      className="bg-slate-50 min-h-screen"
-      style={{ fontFamily: "'Manrope', sans-serif" }}
-    >
-      <div className="onboarding-shell relative flex min-h-screen w-full flex-col bg-white max-w-[500px] mx-auto shadow-xl overflow-hidden border-x border-slate-100">
-        
-        {/* Sticky Header */}
-        <header className="flex items-center px-4 pt-4 pb-2 bg-white sticky top-0 z-10">
-          <button 
-            onClick={handleBack}
-            aria-label="Go back"
-            className="flex size-10 shrink-0 items-center justify-center text-slate-900 rounded-full hover:bg-slate-50 transition-colors"
-          >
-            <BackIcon />
-          </button>
-        </header>
+    <div className="bg-white min-h-[100dvh] flex flex-col" style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif", WebkitFontSmoothing: 'antialiased' }}>
 
-        {/* Main Content */}
-        <main className="flex-1 flex flex-col px-4 sm:px-6 pb-44 sm:pb-52">
-          {error && (
-            <div 
-              className="mb-6 p-4 rounded-xl text-center border border-red-200 bg-red-50"
-            >
-              <p className="text-red-700 text-sm font-medium">{error}</p>
+      {/* iOS Nav Bar */}
+      <nav className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-[#C6C6C8]/30 flex items-end justify-between px-4 pb-2"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 12px) + 4px)', minHeight: '48px' }}>
+        <button onClick={handleBack} className="text-[#007AFF] flex items-center -ml-2 active:opacity-50" aria-label="Back">
+          <span className="material-symbols-outlined text-3xl -mr-1" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400" }}>chevron_left</span>
+          <span className="text-[17px] pb-[2px]">Back</span>
+        </button>
+        <h1 className="text-[17px] font-semibold text-black absolute left-1/2 -translate-x-1/2">Verification</h1>
+        <div className="w-12" />
+      </nav>
+
+      {/* Main content */}
+      <main className="flex-1 flex flex-col max-w-md mx-auto w-full px-4 pt-6 pb-52">
+
+        {/* Error */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 rounded-xl border border-red-100">
+            <p className="text-red-600 text-[15px] text-center font-medium">{error}</p>
+          </div>
+        )}
+
+        {/* ═══ NOT PAID STATE ═══ */}
+        {paymentState === 'not_paid' && (
+          <>
+            {/* Hero */}
+            <div className="text-center mb-6">
+              <div className="w-[72px] h-[72px] mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center shadow-lg">
+                <span className="material-symbols-outlined text-white text-[36px]" style={{ fontVariationSettings: "'FILL' 1, 'wght' 500" }}>verified_user</span>
+              </div>
+              <h1 className="text-[28px] font-bold text-black tracking-tight leading-tight mb-1">Exclusive Consultation</h1>
+              <p className="text-[15px] text-[#8E8E93]">Valued at <span className="line-through">$3,000</span> — yours for just <span className="font-bold text-[#007AFF]">$1</span></p>
             </div>
-          )}
 
-          {/* Not Paid State */}
-          {paymentState === 'not_paid' && (
-            <>
-              {/* Header Section */}
-              <div className="mb-6 mt-2 flex flex-col items-center text-center">
-                {/* Shield Icon */}
-                <div className="w-16 h-16 rounded-full bg-[#2b8cee]/10 flex items-center justify-center mb-4">
-                  <ShieldCheckIcon className="text-[#2b8cee]" />
-                </div>
-                <h1 className="text-slate-900 text-[22px] font-extrabold leading-tight tracking-tight mb-2">
-                  Complete Registration
-                </h1>
-                <p className="text-slate-500 text-sm font-medium">
-                  One-time $1 human verification
-                </p>
-              </div>
-
-              {/* Human Verification Card */}
-              <div className="bg-white border border-slate-200 rounded-xl p-5 mb-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center flex-shrink-0">
-                    <ShieldCheckIcon className="text-white" />
+            {/* What You Get — iOS Grouped List */}
+            <div className="mb-6">
+              <p className="text-[13px] uppercase text-[#8E8E93] font-medium tracking-wide px-4 mb-2">What you get</p>
+              <div className="bg-white rounded-xl border border-[#C6C6C8]/40 overflow-hidden divide-y divide-[#C6C6C8]/30">
+                {/* Item 1 */}
+                <div className="flex items-center gap-3 px-4 py-3.5">
+                  <div className="w-9 h-9 rounded-lg bg-[#34C759]/10 flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-[#34C759] text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
                   </div>
-                  <div className="flex-1">
-                    <h2 className="text-slate-900 text-base font-bold mb-1">
-                      Human Verification
-                    </h2>
-                    <p className="text-slate-500 text-xs font-medium mb-3">
-                      A small step to confirm you're a real person
-                    </p>
-                    <p className="text-slate-600 text-sm leading-relaxed">
-                      To complete your Hushh Fund A registration, we require a simple $1 verification. This helps us filter out bots, scammers, and automated requests.
-                    </p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[15px] font-semibold text-black">Human Verification</p>
+                    <p className="text-[13px] text-[#8E8E93]">Confirm you're a real investor</p>
+                  </div>
+                </div>
+                {/* Item 2 */}
+                <div className="flex items-center gap-3 px-4 py-3.5">
+                  <div className="w-9 h-9 rounded-lg bg-[#FF9500]/10 flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-[#FF9500] text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>monetization_on</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[15px] font-semibold text-black">100 Hushh Coins</p>
+                    <p className="text-[13px] text-[#8E8E93]">Credited instantly to your account</p>
+                  </div>
+                </div>
+                {/* Item 3 */}
+                <div className="flex items-center gap-3 px-4 py-3.5">
+                  <div className="w-9 h-9 rounded-lg bg-[#007AFF]/10 flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-[#007AFF] text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>calendar_month</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[15px] font-semibold text-black">1-Hour Strategy Session</p>
+                    <p className="text-[13px] text-[#8E8E93]">With Manish Sainani, Hedge Fund Manager</p>
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Benefits Card */}
-              <div className="bg-white border border-slate-200 rounded-xl p-5 mb-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-                <div className="flex items-center gap-2 mb-3">
-                  <StarIcon className="text-[#2b8cee]" />
-                  <h3 className="text-slate-900 text-base font-bold">
-                    You'll Also Receive
-                  </h3>
-                </div>
-                <p className="text-slate-400 text-xs font-medium mb-4">
-                  As a thank you for completing verification
-                </p>
-                
-                <div className="space-y-4">
-                  {/* Benefit 1: Hushh Coins */}
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#2b8cee]/10 flex items-center justify-center flex-shrink-0">
-                      <CoinIcon className="text-[#2b8cee]" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-slate-900 text-sm font-bold">
-                        Earn 100 Hushh Coins
-                      </p>
-                      <p className="text-slate-500 text-xs font-medium">
-                        Credited instantly to your account
-                      </p>
-                    </div>
+            {/* Info Banner */}
+            <div className="mb-6 p-4 bg-[#F2F2F7] rounded-xl">
+              <p className="text-[13px] text-[#636366] leading-relaxed text-center">
+                This <span className="font-semibold">$1 verification</span> helps us filter bots and confirms your identity.
+                Redeem your Hushh Coins to schedule a private session with our Hedge Fund Manager.
+              </p>
+            </div>
+
+            {/* Coupon Section */}
+            <div className="mb-4">
+              <button onClick={() => setShowCoupon(!showCoupon)} className="w-full flex items-center justify-center gap-1.5 py-2 text-[15px] text-[#007AFF] font-medium active:opacity-60">
+                <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 0" }}>confirmation_number</span>
+                {showCoupon ? 'Hide coupon code' : 'Have a coupon code?'}
+              </button>
+
+              {showCoupon && (
+                <div className="mt-2 space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text" value={couponCode} onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(null); }}
+                      placeholder="Enter coupon code"
+                      className="flex-1 h-[44px] px-4 rounded-xl bg-[#F2F2F7] border border-[#C6C6C8]/40 text-[15px] text-black placeholder:text-[#C7C7CC] outline-none focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF]/30 font-mono tracking-widest"
+                      autoCapitalize="characters" autoComplete="off"
+                    />
+                    <button onClick={handleCouponRedeem} disabled={couponLoading || !couponCode.trim()}
+                      className="h-[44px] px-5 rounded-xl bg-[#007AFF] text-white text-[15px] font-semibold disabled:bg-[#C7C7CC] active:scale-[0.97] transition-all flex items-center gap-1.5">
+                      {couponLoading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Apply'}
+                    </button>
                   </div>
-
-                  {/* Benefit 2: CEO Access */}
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#2b8cee]/10 flex items-center justify-center flex-shrink-0">
-                      <CalendarIcon className="text-[#2b8cee]" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-slate-900 text-sm font-bold">
-                        Direct CEO Access
-                      </p>
-                      <p className="text-slate-500 text-xs font-medium">
-                        Book a 1-hour deep dive with Manish
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Paid State - Show Google Calendar Booking */}
-          {paymentState === 'paid' && (
-            <>
-              {/* Success Message */}
-              <div className="mb-6 mt-2 flex flex-col items-center text-center">
-                <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
-                  <CheckIcon className="text-green-600" />
-                </div>
-                <h1 className="text-slate-900 text-[22px] font-extrabold leading-tight tracking-tight mb-2">
-                  Registration Complete!
-                </h1>
-                <p className="text-slate-500 text-sm font-medium">
-                  You've earned <span className="font-bold text-slate-900">{hushhCoins} Hushh Coins</span>
-                </p>
-              </div>
-
-              {/* Calendar Booking Header */}
-              <div className="bg-white border border-slate-200 rounded-xl p-5 mb-4 text-center shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-                <h2 className="text-slate-900 text-base font-bold mb-2">
-                  Book Your 1-Hour Deep Dive
-                </h2>
-                <p className="text-slate-500 text-sm">
-                  Schedule office hours with {calendarData?.ceo.name || 'Manish Sainani'}
-                </p>
-                {calendarData?.timezone && (
-                  <p className="text-slate-400 text-xs mt-1">
-                    Times shown in {calendarData.timezone}
-                  </p>
-                )}
-              </div>
-
-              {/* Loading State */}
-              {loadingSlots && (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <div className="relative w-12 h-12 mb-4">
-                    <div className="absolute inset-0 rounded-full border-4 border-slate-200" />
-                    <div className="absolute inset-0 rounded-full border-4 border-t-[#2b8cee] animate-spin" />
-                  </div>
-                  <p className="text-slate-500 text-sm">Loading available times...</p>
+                  {couponError && <p className="text-[13px] text-red-500 text-center font-medium">{couponError}</p>}
                 </div>
               )}
+            </div>
+          </>
+        )}
 
-              {/* Calendar Booking UI */}
-              {!loadingSlots && calendarData && (
-                <div className="space-y-4 mb-6">
-                  {/* Date Selection */}
-                  <div className="overflow-x-auto pb-2 -mx-2 px-2">
-                    <div className="flex gap-2">
-                      {calendarData.availability.map((day) => {
-                        const date = new Date(day.date);
-                        const isSelected = selectedDate === day.date;
-                        const hasSlots = day.slots.some(s => s.available);
+        {/* ═══ PAID STATE — Calendar Booking ═══ */}
+        {paymentState === 'paid' && (
+          <>
+            <div className="text-center mb-6">
+              <div className="w-[72px] h-[72px] mx-auto mb-4 rounded-full bg-[#34C759]/10 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[#34C759] text-[40px]" style={{ fontVariationSettings: "'FILL' 1, 'wght' 600" }}>check_circle</span>
+              </div>
+              <h1 className="text-[28px] font-bold text-black tracking-tight mb-1">You're Verified!</h1>
+              <p className="text-[15px] text-[#8E8E93]"><span className="font-bold text-black">{hushhCoins} Hushh Coins</span> credited</p>
+            </div>
+
+            <div className="mb-4 p-4 bg-[#F2F2F7] rounded-xl text-center">
+              <p className="text-[15px] font-semibold text-black mb-1">Schedule Your Consultation</p>
+              <p className="text-[13px] text-[#8E8E93]">Book a 1-hour session with {calendarData?.ceo.name || 'Manish Sainani'}</p>
+              {calendarData?.timezone && <p className="text-[11px] text-[#C7C7CC] mt-1">{calendarData.timezone}</p>}
+            </div>
+
+            {loadingSlots && (
+              <div className="flex flex-col items-center py-12">
+                <div className="w-10 h-10 border-4 border-gray-200 border-t-[#007AFF] rounded-full animate-spin mb-3" />
+                <p className="text-[13px] text-[#8E8E93]">Loading times...</p>
+              </div>
+            )}
+
+            {!loadingSlots && calendarData && (
+              <div className="space-y-4">
+                {/* Date pills */}
+                <div className="overflow-x-auto pb-2 -mx-2 px-2">
+                  <div className="flex gap-2">
+                    {calendarData.availability.map((day) => {
+                      const d = new Date(day.date);
+                      const sel = selectedDate === day.date;
+                      const has = day.slots.some(s => s.available);
+                      return (
+                        <button key={day.date} onClick={() => { setSelectedDate(day.date); setSelectedSlot(null); }} disabled={!has}
+                          className={`shrink-0 flex flex-col items-center p-2.5 rounded-xl min-w-[62px] border-2 transition-all ${sel ? 'border-[#007AFF] bg-[#007AFF]/5' : has ? 'border-[#C6C6C8]/30 active:bg-gray-50' : 'border-transparent opacity-40'}`}>
+                          <span className="text-[10px] font-medium text-[#8E8E93] uppercase">{d.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                          <span className={`text-[18px] font-bold ${sel ? 'text-[#007AFF]' : 'text-black'}`}>{d.getDate()}</span>
+                          <span className="text-[10px] text-[#8E8E93]">{d.toLocaleDateString('en-US', { month: 'short' })}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Time slots */}
+                {selectedDate && (
+                  <div className="rounded-xl border border-[#C6C6C8]/30 p-3">
+                    <p className="text-[13px] font-semibold text-black mb-2">Available Times</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {calendarData.availability.find(d => d.date === selectedDate)?.slots.filter(s => s.available).map(slot => {
+                        const t = new Date(slot.startTime);
+                        const sel = selectedSlot?.startTime === slot.startTime;
                         return (
-                          <button
-                            key={day.date}
-                            onClick={() => {
-                              setSelectedDate(day.date);
-                              setSelectedSlot(null);
-                            }}
-                            disabled={!hasSlots}
-                            className={`flex-shrink-0 flex flex-col items-center p-3 rounded-xl border-2 min-w-[70px] transition-all ${
-                              isSelected
-                                ? 'border-[#2b8cee] bg-[#2b8cee]/5'
-                                : hasSlots
-                                ? 'border-slate-200 hover:border-slate-300'
-                                : 'border-slate-100 bg-slate-50 opacity-50'
-                            }`}
-                          >
-                            <span className="text-[10px] font-medium text-slate-400 uppercase">
-                              {date.toLocaleDateString('en-US', { weekday: 'short' })}
-                            </span>
-                            <span className={`text-lg font-bold ${isSelected ? 'text-[#2b8cee]' : 'text-slate-900'}`}>
-                              {date.getDate()}
-                            </span>
-                            <span className="text-[10px] text-slate-400">
-                              {date.toLocaleDateString('en-US', { month: 'short' })}
-                            </span>
+                          <button key={slot.startTime} onClick={() => setSelectedSlot(slot)}
+                            className={`py-2 px-2 rounded-lg text-[13px] font-medium transition-all ${sel ? 'bg-[#007AFF] text-white' : 'bg-[#F2F2F7] text-black active:bg-gray-200'}`}>
+                            {t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                           </button>
                         );
                       })}
                     </div>
+                    {calendarData.availability.find(d => d.date === selectedDate)?.slots.filter(s => s.available).length === 0 && (
+                      <p className="text-[13px] text-[#C7C7CC] text-center py-4">No slots available</p>
+                    )}
                   </div>
+                )}
 
-                  {/* Time Slots */}
-                  {selectedDate && (
-                    <div className="bg-white border border-slate-200 rounded-xl p-4">
-                      <h3 className="text-sm font-bold text-slate-900 mb-3">
-                        Available Times
-                      </h3>
-                      <div className="grid grid-cols-3 gap-2">
-                        {calendarData.availability
-                          .find(d => d.date === selectedDate)
-                          ?.slots.filter(slot => slot.available)
-                          .map((slot) => {
-                            const time = new Date(slot.startTime);
-                            const isSelected = selectedSlot?.startTime === slot.startTime;
-                            return (
-                              <button
-                                key={slot.startTime}
-                                onClick={() => setSelectedSlot(slot)}
-                                className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                                  isSelected
-                                    ? 'bg-[#2b8cee] text-white'
-                                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
-                                }`}
-                              >
-                                {time.toLocaleTimeString('en-US', {
-                                  hour: 'numeric',
-                                  minute: '2-digit',
-                                  hour12: true,
-                                })}
-                              </button>
-                            );
-                          })}
-                      </div>
-                      {calendarData.availability
-                        .find(d => d.date === selectedDate)
-                        ?.slots.filter(slot => slot.available).length === 0 && (
-                        <p className="text-slate-400 text-sm text-center py-4">
-                          No available slots on this day
-                        </p>
-                      )}
+                {/* Selected summary */}
+                {selectedSlot && (
+                  <div className="p-3 bg-[#007AFF]/5 border border-[#007AFF]/20 rounded-xl flex items-center gap-3">
+                    <span className="material-symbols-outlined text-[#007AFF]" style={{ fontVariationSettings: "'FILL' 1" }}>event_available</span>
+                    <div>
+                      <p className="text-[14px] font-semibold text-black">{new Date(selectedSlot.startTime).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+                      <p className="text-[13px] text-[#8E8E93]">{new Date(selectedSlot.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} – {new Date(selectedSlot.endTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</p>
                     </div>
-                  )}
-
-                  {/* Selected Slot Summary */}
-                  {selectedSlot && (
-                    <div className="bg-[#2b8cee]/5 border border-[#2b8cee]/20 rounded-xl p-4">
-                      <div className="flex items-center gap-3">
-                        <CalendarIcon className="text-[#2b8cee]" />
-                        <div>
-                          <p className="text-sm font-bold text-slate-900">
-                            {new Date(selectedSlot.startTime).toLocaleDateString('en-US', {
-                              weekday: 'long',
-                              month: 'long',
-                              day: 'numeric',
-                            })}
-                          </p>
-                          <p className="text-sm text-slate-600">
-                            {new Date(selectedSlot.startTime).toLocaleTimeString('en-US', {
-                              hour: 'numeric',
-                              minute: '2-digit',
-                              hour12: true,
-                            })} - {new Date(selectedSlot.endTime).toLocaleTimeString('en-US', {
-                              hour: 'numeric',
-                              minute: '2-digit',
-                              hour12: true,
-                            })}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-
-          {/* Booked State */}
-          {paymentState === 'booked' && (
-            <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
-              <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mb-6">
-                <CheckIcon className="text-green-600" />
+                  </div>
+                )}
               </div>
-              <h1 className="text-slate-900 text-[22px] font-extrabold leading-tight tracking-tight mb-2">
-                All Set!
-              </h1>
-              <p className="text-slate-500 text-sm font-medium mb-2">
-                Your meeting is scheduled with Manish Sainani.
-              </p>
-              <p className="text-slate-500 text-sm">
-                You've earned <span className="font-bold text-slate-900">{hushhCoins} Hushh Coins</span>!
-              </p>
-            </div>
-          )}
-        </main>
+            )}
+          </>
+        )}
 
-        {/* Fixed Footer - Hidden when main footer is visible */}
-        {!isFooterVisible && (
-          <div
-            className="fixed bottom-0 left-0 right-0 z-50 w-full max-w-[500px] mx-auto border-t border-slate-100 bg-white/90 backdrop-blur-md px-4 sm:px-6 pt-4 sm:pt-5 pb-[calc(env(safe-area-inset-bottom)+16px)] shadow-[0_-4px_20px_rgba(0,0,0,0.04)]"
-            data-onboarding-footer
-          >
-            {/* Not Paid Footer */}
+        {/* ═══ BOOKED STATE ═══ */}
+        {paymentState === 'booked' && (
+          <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
+            <div className="w-20 h-20 mx-auto mb-5 rounded-full bg-[#34C759]/10 flex items-center justify-center">
+              <span className="material-symbols-outlined text-[#34C759] text-[44px]" style={{ fontVariationSettings: "'FILL' 1, 'wght' 600" }}>task_alt</span>
+            </div>
+            <h1 className="text-[28px] font-bold text-black tracking-tight mb-2">All Set!</h1>
+            <p className="text-[15px] text-[#8E8E93] mb-1">Your consultation is scheduled with</p>
+            <p className="text-[17px] font-semibold text-black">Manish Sainani</p>
+            <p className="text-[13px] text-[#8E8E93] mt-1">{hushhCoins} Hushh Coins earned 🪙</p>
+          </div>
+        )}
+      </main>
+
+      {/* ═══ FIXED FOOTER ═══ */}
+      {!isFooterVisible && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-md border-t border-[#C6C6C8]/30 px-4 pt-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }} data-onboarding-footer>
+          <div className="max-w-md mx-auto flex flex-col gap-2.5">
+
             {paymentState === 'not_paid' && (
               <>
-                {/* Buttons */}
-                <div className="flex flex-col gap-3">
-                  {/* Payment Button */}
-                  <button
-                    onClick={handlePayment}
-                    disabled={loading}
-                    data-onboarding-cta
-                    className="flex w-full h-11 sm:h-12 cursor-pointer items-center justify-center rounded-full bg-[#2b8cee] px-6 text-white text-sm sm:text-base font-semibold transition-all hover:bg-[#2070c0] active:scale-[0.98] disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
-                  >
-                    {loading ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
-                        Redirecting...
-                      </span>
-                    ) : (
-                      'Complete Registration - $1'
-                    )}
-                  </button>
-
-                  {/* Skip for testing */}
-                  <button
-                    onClick={handleSkipPaymentForNow}
-                    disabled={loading}
-                    className="flex w-full h-11 sm:h-12 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white px-6 text-slate-700 text-sm font-semibold transition-all hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    Skip for now
-                  </button>
-
-                  {/* Back Button */}
-                  <button
-                    onClick={handleBack}
-                    disabled={loading}
-                    className="flex w-full cursor-pointer items-center justify-center rounded-full bg-transparent py-2 text-slate-500 text-sm font-semibold hover:text-slate-800 transition-colors"
-                  >
-                    Back
-                  </button>
-                </div>
-
-                {/* Security Notice */}
-                <div className="mt-4 flex items-center justify-center gap-2">
-                  <LockIcon className="text-slate-400" />
-                  <p className="text-[10px] text-slate-400 leading-tight">
-                    Secure payment powered by Stripe
-                  </p>
+                <button onClick={handlePayment} disabled={loading} data-onboarding-cta
+                  className="h-[50px] w-full rounded-xl bg-[#007AFF] text-white text-[17px] font-semibold flex items-center justify-center active:opacity-90 active:scale-[0.98] disabled:bg-gray-200 disabled:text-gray-400 transition-all shadow-sm">
+                  {loading ? <><div className="w-5 h-5 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />Redirecting...</> : 'Verify & Unlock — $1'}
+                </button>
+                <div className="flex items-center justify-center gap-1.5 py-1">
+                  <span className="material-symbols-outlined text-[#C7C7CC] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>lock</span>
+                  <p className="text-[11px] text-[#C7C7CC]">Secure payment powered by Stripe</p>
                 </div>
               </>
             )}
 
-            {/* Paid Footer */}
             {paymentState === 'paid' && (
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={handleBookMeeting}
-                  disabled={!selectedSlot || bookingInProgress}
-                  data-onboarding-cta
-                  className="flex w-full h-11 sm:h-12 cursor-pointer items-center justify-center rounded-full bg-[#2b8cee] px-6 text-white text-sm sm:text-base font-semibold transition-all hover:bg-[#2070c0] active:scale-[0.98] disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
-                >
-                  {bookingInProgress ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      Booking...
-                    </span>
-                  ) : selectedSlot ? (
-                    'Confirm Booking'
-                  ) : (
-                    'Select a Time Slot'
-                  )}
+              <>
+                <button onClick={handleBookMeeting} disabled={!selectedSlot || bookingInProgress} data-onboarding-cta
+                  className="h-[50px] w-full rounded-xl bg-[#007AFF] text-white text-[17px] font-semibold flex items-center justify-center active:opacity-90 active:scale-[0.98] disabled:bg-gray-200 disabled:text-gray-400 transition-all shadow-sm">
+                  {bookingInProgress ? <><div className="w-5 h-5 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />Booking...</> : selectedSlot ? 'Confirm Booking' : 'Select a Time'}
                 </button>
-
-                <button
-                  onClick={handleContinueToProfile}
-                  disabled={bookingInProgress}
-                  className="flex w-full cursor-pointer items-center justify-center rounded-full bg-transparent py-2 text-slate-500 text-sm font-semibold hover:text-slate-800 transition-colors"
-                >
-                  Skip - I'll book later
-                </button>
-              </div>
+                <button onClick={handleContinue} disabled={bookingInProgress}
+                  className="h-[44px] text-[#007AFF] text-[15px] font-medium active:opacity-60">I'll book later</button>
+              </>
             )}
 
-            {/* Booked Footer */}
-              {paymentState === 'booked' && (
-                <button
-                  onClick={handleContinueToProfile}
-                  data-onboarding-cta
-                  className="flex w-full h-11 sm:h-12 cursor-pointer items-center justify-center rounded-full bg-[#2b8cee] px-6 text-white text-sm sm:text-base font-semibold transition-all hover:bg-[#2070c0] active:scale-[0.98]"
-                >
-                  Continue to My Profile
-                </button>
-              )}
+            {paymentState === 'booked' && (
+              <button onClick={handleContinue} data-onboarding-cta
+                className="h-[50px] w-full rounded-xl bg-[#007AFF] text-white text-[17px] font-semibold flex items-center justify-center active:opacity-90 active:scale-[0.98] shadow-sm">
+                Continue to Profile
+              </button>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
