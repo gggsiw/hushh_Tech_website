@@ -65,6 +65,9 @@ export default function Navbar() {
   const isMobile = useBreakpointValue({ base: true, lg: false });
   const isDesktop = isMobile === false;
 
+  // Hide ticker strip on onboarding pages to keep UX clean
+  const isOnboarding = location.pathname.startsWith('/onboarding');
+
   // Fetch real-time stock quotes (refreshes every 2 minutes for 27 stocks)
   const { quotes, loading: quotesLoading, lastUpdated } = useStockQuotes(120000);
 
@@ -314,7 +317,8 @@ export default function Navbar() {
           </div>
         </nav>
 
-        {/* Chip-based Ticker Strip - BELOW Navigation */}
+        {/* Chip-based Ticker Strip - BELOW Navigation (hidden on onboarding pages) */}
+        {!isOnboarding && (
         <section className="relative w-full bg-[#F8F9FA] py-2.5 border-b border-gray-200">
           {/* Ticker Marquee with Fade Mask */}
           <div className="ticker-mask relative flex w-full overflow-hidden">
@@ -348,10 +352,11 @@ export default function Navbar() {
             </div>
           )}
         </section>
+        )}
       </header>
 
-      {/* Spacer for fixed header (ticker ~48px + nav ~64px = 112px) */}
-      <div className="h-28" />
+      {/* Spacer for fixed header — shorter on onboarding (no ticker) */}
+      <div className={isOnboarding ? "h-16" : "h-28"} />
 
       {/* iOS Native Side Menu */}
       {isOpen && (
