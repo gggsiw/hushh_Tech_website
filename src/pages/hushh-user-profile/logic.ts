@@ -782,5 +782,8 @@ export const useHushhUserProfileLogic = () => {
     handleUpdateAIField, handleMultiSelectToggle, handleChange, handleSubmit,
     handleBack, handleSave, handleAppleWalletPass, handleGoogleWalletPass,
     handleShareWhatsApp, handleShareX, handleShareEmail, handleShareLinkedIn, handleOpenProfile,
+    inputClassName, selectClassName, labelClassName, cardClassName,
+    aiFieldCardTones, getConfidenceLabel, getConfidenceBadgeClass,
+    shadowConfidenceLabel, shadowLifestyleTags, shadowBrandTags, shadowKnownForTags,
   };
 };
