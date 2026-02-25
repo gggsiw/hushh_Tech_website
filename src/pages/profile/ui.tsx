@@ -1,22 +1,22 @@
 /**
- * Profile Page — UI / Presentation
- * Tailwind design matching home, fund-a, community pages.
- * All logic in logic.ts via useProfileLogic().
+ * Profile Page — UI / Presentation (Revamped)
+ * Apple iOS colors, Playfair Display headings, proper English capitalization.
+ * Matches Home + Fund A + Community design language.
+ * Logic stays in logic.ts via useProfileLogic().
  */
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import HushhTechBackHeader from '../../components/hushh-tech-back-header/HushhTechBackHeader';
 import HushhTechCta, { HushhTechCtaVariant } from '../../components/hushh-tech-cta/HushhTechCta';
+import HushhTechFooter, { HushhFooterTab } from '../../components/hushh-tech-footer/HushhTechFooter';
 import HushhLogo from '../../components/images/Hushhogo.png';
 import { useProfileLogic } from './logic';
 
-/* ── section label (reusable) ── */
-const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <p className="text-[10px] tracking-[0.18em] uppercase text-neutral-400 font-medium">
-    {children}
-  </p>
-);
+/* ── Playfair heading style ── */
+const playfair = { fontFamily: "'Playfair Display', serif" };
 
 const ProfilePage: React.FC = () => {
+  const navigate = useNavigate();
   const {
     onboardingStatus,
     primaryCTA,
@@ -24,8 +24,8 @@ const ProfilePage: React.FC = () => {
   } = useProfileLogic();
 
   return (
-    <div className="flex flex-col min-h-screen bg-white">
-      {/* header — back arrow to go home */}
+    <div className="flex flex-col min-h-screen bg-white selection:bg-hushh-blue selection:text-white">
+      {/* header */}
       <HushhTechBackHeader />
 
       {/* scrollable content */}
@@ -33,30 +33,31 @@ const ProfilePage: React.FC = () => {
         <div className="w-full max-w-[440px] flex flex-col items-center gap-8">
 
           {/* pill badge */}
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50 px-4 py-1">
-            <span className="material-symbols-rounded text-[16px] text-neutral-500">person</span>
-            <span className="text-[11px] tracking-[0.14em] uppercase text-neutral-500 font-medium">
-              profile
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-hushh-blue/20 bg-hushh-blue/5 px-4 py-1">
+            <span className="material-symbols-rounded text-[16px] text-hushh-blue">person</span>
+            <span className="text-[11px] tracking-[0.14em] uppercase text-hushh-blue font-medium">
+              Profile
             </span>
           </span>
 
           {/* logo */}
           <img
             src={HushhLogo}
-            alt="hushh logo"
+            alt="Hushh Logo"
             className="h-[100px] md:h-[120px] object-contain"
           />
 
           {/* headline */}
           <div className="text-center space-y-3">
             <h1
-              className="text-[32px] md:text-[38px] leading-[1.08] tracking-tight text-neutral-900"
-              style={{ fontFamily: "'Playfair Display', serif" }}
+              className="text-[32px] md:text-[38px] leading-[1.08] tracking-tight text-gray-900 font-serif"
+              style={playfair}
             >
-              investing in the future.
+              Investing in the{' '}
+              <span className="text-gray-400 italic font-light">Future.</span>
             </h1>
-            <p className="text-[15px] md:text-[17px] leading-relaxed text-neutral-500 max-w-[360px] mx-auto">
-              the ai-powered berkshire hathaway. we combine ai and human expertise to invest in exceptional businesses for long-term value creation.
+            <p className="text-[15px] md:text-[17px] leading-relaxed text-gray-500 max-w-[360px] mx-auto">
+              The AI-powered Berkshire Hathaway. We combine AI and human expertise to invest in exceptional businesses for long-term value creation.
             </p>
           </div>
 
@@ -67,35 +68,49 @@ const ProfilePage: React.FC = () => {
               variant={HushhTechCtaVariant.BLACK}
               disabled={onboardingStatus.loading}
             >
-              {onboardingStatus.loading ? 'loading...' : primaryCTA.text}
+              {onboardingStatus.loading ? 'Loading...' : primaryCTA.text}
             </HushhTechCta>
             <HushhTechCta
               onClick={handleDiscoverFundA}
               variant={HushhTechCtaVariant.WHITE}
             >
-              discover fund a
+              Discover Fund A
             </HushhTechCta>
           </div>
 
           {/* trust indicators */}
           <div className="flex items-center justify-center gap-6 mt-4">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <SectionLabel>sec registered</SectionLabel>
+              <span className="w-2 h-2 rounded-full bg-ios-green animate-pulse" />
+              <p className="text-[10px] tracking-[0.18em] uppercase text-gray-400 font-medium">
+                SEC Registered
+              </p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="material-symbols-rounded text-[14px] text-neutral-400">lock</span>
-              <SectionLabel>bank level security</SectionLabel>
+              <span className="material-symbols-rounded text-[14px] text-hushh-blue">lock</span>
+              <p className="text-[10px] tracking-[0.18em] uppercase text-gray-400 font-medium">
+                Bank Level Security
+              </p>
             </div>
           </div>
 
           {/* tagline */}
-          <p className="text-[12px] text-neutral-400 tracking-wide text-center mt-2">
-            secure. private. ai-powered.
+          <p className="text-[12px] text-gray-400 tracking-wide text-center mt-2">
+            Secure. Private. AI-Powered.
           </p>
         </div>
       </main>
 
+      {/* ═══ Footer Nav ═══ */}
+      <HushhTechFooter
+        activeTab={HushhFooterTab.PROFILE}
+        onTabChange={(tab) => {
+          if (tab === HushhFooterTab.HOME) navigate('/');
+          if (tab === HushhFooterTab.FUND_A) navigate('/discover-fund-a');
+          if (tab === HushhFooterTab.COMMUNITY) navigate('/community');
+          if (tab === HushhFooterTab.PROFILE) navigate('/profile');
+        }}
+      />
     </div>
   );
 };
