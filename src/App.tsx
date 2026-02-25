@@ -134,9 +134,10 @@ const useLayoutVisibility = () => {
   const isDeleteAccount = location.pathname === '/delete-account';
   const isLogin = location.pathname.toLowerCase() === '/login';
   const isSignup = location.pathname.toLowerCase() === '/signup';
+  const isSignNda = location.pathname.startsWith('/sign-nda');
 
-  // Home + Onboarding + Profile + Fund A + Community + Delete Account + Login + Signup use HushhTechHeader/Footer — hide old global nav/footer
-  const hideOld = isHushhAI || isHushhAgent || isKai || isStudio || isHomePage || isOnboarding || isProfile || isFundA || isCommunity || isDeleteAccount || isLogin || isSignup;
+  // Home + Onboarding + Profile + Fund A + Community + Delete Account + Login + Signup + Sign NDA use HushhTechHeader/Footer — hide old global nav/footer
+  const hideOld = isHushhAI || isHushhAgent || isKai || isStudio || isHomePage || isOnboarding || isProfile || isFundA || isCommunity || isDeleteAccount || isLogin || isSignup || isSignNda;
   return {
     showNavbar: !hideOld,
     showFooter: !hideOld,
