@@ -30,7 +30,7 @@ const inlineInput = "text-right text-sm font-medium bg-transparent border-none f
 /* ── page ── */
 const HushhUserProfilePage: React.FC = () => {
   const {
-    form, investorProfile, loading, hasOnboardingData,
+    form, investorProfile, loading, loadingSeconds, hasOnboardingData,
     isApplePassLoading, isGooglePassLoading, nwsResult, nwsLoading,
     hasCopied, onCopy, profileUrl, navigate,
     handleChange, handleSubmit, handleBack, handleSave,
@@ -98,7 +98,7 @@ const HushhUserProfilePage: React.FC = () => {
           </p>
           <HushhTechCta variant={HushhTechCtaVariant.BLACK} onClick={handleSave} disabled={loading}>
             {loading
-              ? "Generating..."
+              ? `Generating... ${loadingSeconds}s`
               : investorProfile
               ? "Update Profile"
               : hasOnboardingData

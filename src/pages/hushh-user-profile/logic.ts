@@ -2,7 +2,7 @@
  * HushhUserProfile — All Business Logic
  * State, effects, handlers, constants extracted into useHushhUserProfileLogic hook
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast, useClipboard } from '@chakra-ui/react';
 import { useFooterVisibility } from '../../utils/useFooterVisibility';
@@ -116,6 +116,23 @@ export const useHushhUserProfileLogic = () => {
   // NWS Score state
   const [nwsResult, setNwsResult] = useState<NWSResult | null>(null);
   const [nwsLoading, setNwsLoading] = useState(true);
+
+  // Elapsed timer — shows seconds while AI generates (UX feedback)
+  const [loadingSeconds, setLoadingSeconds] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startTimer = useCallback(() => {
+    setLoadingSeconds(0);
+    timerRef.current = setInterval(() => setLoadingSeconds((s) => s + 1), 1000);
+  }, []);
+
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    setLoadingSeconds(0);
+  }, []);
+
+  // Cleanup timer on unmount
+  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
 
   // Field options for AI-generated profile editing
   const FIELD_OPTIONS: Record<string, { value: string; label: string }[]> = {
@@ -497,31 +514,38 @@ export const useHushhUserProfileLogic = () => {
 
     setLoading(true);
     setShadowLoading(true);
+    startTimer();
+
+    // 30s timeout — abort if APIs take too long
+    const TIMEOUT_MS = 30_000;
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Request timed out after 30s. Please try again.")), TIMEOUT_MS)
+    );
 
     try {
-      // Call BOTH APIs in parallel using Promise.allSettled
-      const [investorResult, shadowResult] = await Promise.allSettled([
-        // 1. Existing Investor Profile API
-        generateInvestorProfile({
-          name: form.name,
-          email: form.email,
-          age: typeof form.age === "number" ? form.age : Number(form.age),
-          phone_country_code: form.phoneCountryCode,
-          phone_number: form.phoneNumber,
-          organisation: form.organisation || undefined,
-        }),
-        // 2. NEW Shadow Investigator API (parallel)
-        // Calculate age from DOB for higher confidence score
-        invokeShadowInvestigator({
-          name: form.name,
-          email: form.email,
-          contact: formatPhoneContact(form.phoneCountryCode, form.phoneNumber),
-          country: form.residenceCountry || form.citizenshipCountry || undefined,
-          age: typeof form.age === 'number' ? form.age : (form.dateOfBirth 
-            ? Math.floor((Date.now() - new Date(form.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
-            : undefined),
-          dateOfBirth: form.dateOfBirth || undefined,
-        }),
+      // Call BOTH APIs in parallel with 30s timeout guard
+      const [investorResult, shadowResult] = await Promise.race([
+        Promise.allSettled([
+          generateInvestorProfile({
+            name: form.name,
+            email: form.email,
+            age: typeof form.age === "number" ? form.age : Number(form.age),
+            phone_country_code: form.phoneCountryCode,
+            phone_number: form.phoneNumber,
+            organisation: form.organisation || undefined,
+          }),
+          invokeShadowInvestigator({
+            name: form.name,
+            email: form.email,
+            contact: formatPhoneContact(form.phoneCountryCode, form.phoneNumber),
+            country: form.residenceCountry || form.citizenshipCountry || undefined,
+            age: typeof form.age === 'number' ? form.age : (form.dateOfBirth 
+              ? Math.floor((Date.now() - new Date(form.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+              : undefined),
+            dateOfBirth: form.dateOfBirth || undefined,
+          }),
+        ]),
+        timeoutPromise,
       ]);
 
       // Handle Investor Profile result
@@ -626,6 +650,7 @@ export const useHushhUserProfileLogic = () => {
     } finally {
       setLoading(false);
       setShadowLoading(false);
+      stopTimer();
     }
   };
 
@@ -641,16 +666,15 @@ export const useHushhUserProfileLogic = () => {
     }
   };
 
+  // handleSave — directly calls handleSubmit (no <form> tag needed)
   const handleSave = () => {
-    // Edge case: prevent double-click while already loading
     if (loading) return;
-    // Edge case: ensure userId exists (auth completed)
     if (!userId) {
       toast({ title: "Please wait", description: "Still loading your profile...", status: "info", duration: 3000 });
       return;
     }
-    const formEl = document.querySelector('form');
-    if (formEl) formEl.requestSubmit();
+    // Call handleSubmit directly — no form element needed
+    handleSubmit({ preventDefault: () => {} } as React.FormEvent);
   };
 
   // Handle Apple Wallet pass download
@@ -818,7 +842,7 @@ export const useHushhUserProfileLogic = () => {
 
   return {
     form, setForm, userId, investorProfile, setInvestorProfile, profileSlug,
-    loading, setLoading, hasOnboardingData, isApplePassLoading, isGooglePassLoading,
+    loading, loadingSeconds, setLoading, hasOnboardingData, isApplePassLoading, isGooglePassLoading,
     editingField, setEditingField, shadowProfile, shadowLoading, nwsResult, nwsLoading,
     isFooterVisible, hasCopied, onCopy, profileUrl, navigate, toast,
     FIELD_OPTIONS, MULTI_SELECT_FIELDS, COUNTRIES, defaultFormState,
