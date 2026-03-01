@@ -10,6 +10,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import HushhTechBackHeader from '../../components/hushh-tech-back-header/HushhTechBackHeader';
 import HushhTechCta, { HushhTechCtaVariant } from '../../components/hushh-tech-cta/HushhTechCta';
+import AgentAvatar from '../components/AgentAvatar';
 
 const playfair = { fontFamily: "'Playfair Display', serif" };
 
@@ -216,9 +217,7 @@ const AgentDetailPage: React.FC = () => {
 
         {/* ── Profile Hero ── */}
         <section className="pt-8 pb-6 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center text-2xl font-bold text-white mx-auto mb-4">
-            {agent.name.charAt(0)}
-          </div>
+          <AgentAvatar name={agent.name} size="xl" className="mx-auto mb-4" />
 
           <h1
             className="text-[1.75rem] leading-[1.1] font-normal text-black tracking-tight font-serif"

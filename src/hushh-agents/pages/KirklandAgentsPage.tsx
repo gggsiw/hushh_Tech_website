@@ -10,6 +10,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import HushhTechBackHeader from '../../components/hushh-tech-back-header/HushhTechBackHeader';
+import AgentAvatar from '../components/AgentAvatar';
 
 const playfair = { fontFamily: "'Playfair Display', serif" };
 
@@ -161,13 +162,7 @@ const AgentCard: React.FC<{ agent: KirklandAgent; featured?: boolean }> = ({ age
     >
       {/* Top row: avatar + name + MCP badge */}
       <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold text-white shrink-0 ${
-          featured
-            ? 'bg-gradient-to-br from-amber-500 to-orange-500'
-            : 'bg-gradient-to-br from-gray-800 to-gray-900'
-        }`}>
-          {agent.name.charAt(0)}
-        </div>
+        <AgentAvatar name={agent.name} size="md" featured={featured} />
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-semibold text-gray-900 truncate leading-tight">
             {agent.name}

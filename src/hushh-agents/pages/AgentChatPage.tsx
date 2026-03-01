@@ -10,6 +10,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import MarkdownRenderer from '../components/MarkdownRenderer';
+import AgentAvatar from '../components/AgentAvatar';
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL || 'https://ibsisfnjxeowvdtvgzff.supabase.co',
@@ -201,9 +202,7 @@ const AgentChatPage: React.FC = () => {
           <span className="material-symbols-outlined text-[18px] text-gray-600">arrow_back</span>
         </button>
 
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center text-sm font-bold text-white shrink-0">
-          {agent.name.charAt(0)}
-        </div>
+        <AgentAvatar name={agent.name} size="md" />
 
         <div className="flex-1 min-w-0">
           <p className="text-[13px] sm:text-sm font-semibold text-gray-900 truncate">{agent.name}</p>
@@ -226,9 +225,7 @@ const AgentChatPage: React.FC = () => {
         {/* Empty state with quick questions */}
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 sm:py-16 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center text-2xl font-bold text-white mb-4">
-              {agent.name.charAt(0)}
-            </div>
+            <AgentAvatar name={agent.name} size="xl" />
             <h2 className="text-lg font-semibold text-gray-900 mb-1">{agent.name}</h2>
             <p className="text-[12px] text-gray-400 mb-1">
               {agent.categories?.slice(0, 2).join(' · ') || 'Agent'}
@@ -259,9 +256,7 @@ const AgentChatPage: React.FC = () => {
             className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             {msg.role === 'assistant' && (
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center text-[10px] font-bold text-white shrink-0 mr-2 mt-1">
-                {agent.name.charAt(0)}
-              </div>
+              <AgentAvatar name={agent.name} size="sm" className="mr-2 mt-1" />
             )}
             <div
               className={`max-w-[85%] sm:max-w-[75%] rounded-2xl min-w-0 ${
@@ -282,9 +277,7 @@ const AgentChatPage: React.FC = () => {
         {/* Typing indicator */}
         {isSending && (
           <div className="flex justify-start">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center text-[10px] font-bold text-white shrink-0 mr-2 mt-1">
-              {agent.name.charAt(0)}
-            </div>
+            <AgentAvatar name={agent.name} size="sm" className="mr-2 mt-1" />
             <div className="bg-gray-100 text-gray-400 px-4 py-2.5 rounded-2xl rounded-bl-sm text-[12px]">
               <span className="inline-flex gap-1">
                 <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
