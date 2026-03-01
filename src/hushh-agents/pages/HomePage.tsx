@@ -241,6 +241,83 @@ export default function AgentsHomePage() {
           </div>
         </section>
 
+        {/* ═══ Hushh Code — Claude Opus 4.5 via Vertex AI ═══ */}
+        <section className="py-6">
+          <div 
+            className="group relative overflow-hidden rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:shadow-2xl"
+            style={{ 
+              background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #533483 100%)',
+            }}
+            onClick={() => navigate('/hushh-agents/code')}
+            role="button"
+            tabIndex={0}
+            aria-label="Open Hushh Code - AI Code Generation"
+            onKeyDown={(e) => { if (e.key === 'Enter') navigate('/hushh-agents/code'); }}
+          >
+            {/* Animated glow */}
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl animate-pulse" />
+            <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-purple-900/20 to-transparent" />
+            
+            {/* NEW Badge */}
+            <div className="absolute top-4 right-4 bg-purple-500/90 backdrop-blur-sm px-3 py-1 rounded-full">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-white flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                NEW
+              </span>
+            </div>
+            
+            <div className="relative z-10 flex flex-col gap-4">
+              {/* Icon & Title */}
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-purple-500/20 backdrop-blur-md flex items-center justify-center border border-purple-400/30">
+                  <span className="material-symbols-outlined text-4xl text-purple-300">code</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-medium tracking-widest uppercase text-purple-300/70 block">
+                    Claude Opus 4.5 • Vertex AI
+                  </span>
+                  <h2 className="text-2xl font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
+                    Hushh Code
+                  </h2>
+                  <p className="text-sm text-purple-200/80 font-light">AI Code Generation</p>
+                </div>
+              </div>
+              
+              {/* Description */}
+              <p className="text-purple-100/80 text-sm font-light leading-relaxed">
+                Generate, debug, explain, and optimize code with Claude Opus 4.5.
+                Extended thinking for complex programming tasks. 
+                Supports TypeScript, Python, React, Go, Rust & more.
+              </p>
+              
+              {/* Features */}
+              <div className="flex flex-wrap gap-2 mt-2">
+                {['Code Gen', 'Debug', 'Explain', 'Optimize', 'Extended Thinking'].map((cap) => (
+                  <span 
+                    key={cap}
+                    className="px-3 py-1.5 bg-purple-500/15 backdrop-blur-sm border border-purple-400/20 rounded-full text-[10px] font-medium uppercase tracking-wider text-purple-200"
+                  >
+                    {cap}
+                  </span>
+                ))}
+              </div>
+              
+              {/* CTA */}
+              <div className="pt-4 border-t border-purple-400/20 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-purple-300/80">terminal</span>
+                  <span className="text-sm font-medium text-purple-200">
+                    Start Coding
+                  </span>
+                </div>
+                <span className="material-symbols-outlined text-purple-300 group-hover:translate-x-2 transition-transform">
+                  arrow_forward
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* ── Features Grid ── */}
         <section className="py-8">
           <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400 mb-2 font-medium">Features</p>

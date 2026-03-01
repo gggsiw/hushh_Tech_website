@@ -21,6 +21,7 @@ import HushhLogo from '../components/images/Hushhogo.png';
 const HomePage = lazy(() => import('./pages/HomePage'));
 const ChatPage = lazy(() => import('./pages/ChatPage'));
 const VoicePage = lazy(() => import('./pages/VoicePage'));
+const CodePage = lazy(() => import('./pages/CodePage'));
 
 // Playfair heading style
 const playfair = { fontFamily: "'Playfair Display', serif" };
@@ -253,6 +254,12 @@ const App: React.FC = () => {
         <Route
           path="voice"
           element={<VoicePage />}
+        />
+
+        {/* Code Generation - Claude Opus 4.5 */}
+        <Route
+          path="code"
+          element={<CodePage />}
         />
 
         {/* Chat with specific agent */}
