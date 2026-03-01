@@ -27,3 +27,4 @@ dist-ssr
 *.sw?
 .vercel
 vertex-ai-key.json
+.env.gemini-keys
