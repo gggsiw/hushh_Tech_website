@@ -27,7 +27,7 @@ const HushhTechHeader: React.FC<HushhTechHeaderProps> = ({
   return (
     <>
       <header
-        className={`${positionClasses} bg-white px-6 py-4 flex justify-between items-center transition-all duration-300 ${className}`}
+        className={`${positionClasses} bg-white px-5 sm:px-6 md:px-8 lg:px-12 py-4 md:py-5 flex justify-between items-center transition-all duration-300 max-w-md sm:max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-6xl mx-auto w-full ${className}`}
       >
         {/* Logo + Brand */}
         <div className="flex items-center gap-3">

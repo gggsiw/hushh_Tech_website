@@ -140,8 +140,8 @@ const HushhTechFooter: React.FC<HushhTechFooterProps> = ({
     <div
       className={`fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-4 pointer-events-none ${className}`}
     >
-      <div className="relative max-w-md mx-auto pointer-events-auto">
-        <div className="h-[72px] bg-[#050505] rounded-[2rem] flex items-center justify-between px-8 relative shadow-2xl">
+      <div className="relative max-w-md sm:max-w-lg md:max-w-xl mx-auto pointer-events-auto">
+        <div className="h-[72px] bg-[#050505] rounded-[2rem] flex items-center justify-between px-8 md:px-12 relative shadow-2xl">
           {/* Center Hushh logo — ALWAYS goes to /community (blogs) */}
           <div className="absolute left-1/2 -top-6 -translate-x-1/2 z-10">
             <button
