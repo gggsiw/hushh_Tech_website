@@ -1,13 +1,11 @@
 /**
- * HushhTechFooter — Reusable bottom navigation bar
+ * HushhTechFooter — Self-contained bottom navigation bar
  * Floating dark rounded bar with center Hushh logo and 4 nav tabs.
+ * All navigation is hardcoded — no page can override behavior.
+ * Center logo ALWAYS goes to Home. Tabs ALWAYS go to their routes.
  *
  * Usage:
- *   <HushhTechFooter
- *     activeTab={HushhFooterTab.HOME}
- *     onTabChange={(tab) => navigate(tab)}
- *     onLogoClick={() => navigate('/')}
- *   />
+ *   <HushhTechFooter activeTab={HushhFooterTab.HOME} />
  */
 import React from "react";
 import { useNavigate } from "react-router-dom";
@@ -22,15 +20,22 @@ export enum HushhFooterTab {
 }
 
 interface HushhTechFooterProps {
-  /** Currently active tab */
+  /** Currently active tab — visual only, does NOT change behavior */
   activeTab?: HushhFooterTab;
-  /** Callback when a tab is tapped */
-  onTabChange?: (tab: HushhFooterTab) => void;
-  /** Callback when center logo is tapped */
-  onLogoClick?: () => void;
   /** Extra classes on root container */
   className?: string;
 }
+
+/** Hardcoded route map — tabs always navigate here */
+const TAB_ROUTES: Record<HushhFooterTab, string> = {
+  [HushhFooterTab.HOME]: "/",
+  [HushhFooterTab.FUND_A]: "/discover-fund-a",
+  [HushhFooterTab.COMMUNITY]: "/community/events",
+  [HushhFooterTab.PROFILE]: "/profile",
+};
+
+/** Center logo ALWAYS navigates here */
+const LOGO_ROUTE = "/";
 
 /** Tab configuration */
 const TABS = [
@@ -53,46 +58,27 @@ const FundAIcon: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   );
 };
 
-/** Default route map for each tab */
-const TAB_ROUTES: Record<HushhFooterTab, string> = {
-  [HushhFooterTab.HOME]: "/",
-  [HushhFooterTab.FUND_A]: "/discover-fund-a",
-  [HushhFooterTab.COMMUNITY]: "/community/events",
-  [HushhFooterTab.PROFILE]: "/profile",
-};
-
 const HushhTechFooter: React.FC<HushhTechFooterProps> = ({
   activeTab,
-  onTabChange,
-  onLogoClick,
   className = "",
 }) => {
   const navigate = useNavigate();
   const leftTabs = TABS.slice(0, 2);
   const rightTabs = TABS.slice(2);
 
-  /** Handle tab click — use parent callback if provided, else navigate */
+  /** Tab click — always navigates to hardcoded route */
   const handleTabClick = (tabId: HushhFooterTab) => {
-    if (onTabChange) {
-      onTabChange(tabId);
-    } else {
-      navigate(TAB_ROUTES[tabId]);
-    }
+    navigate(TAB_ROUTES[tabId]);
   };
 
-  /** Handle logo click — use parent callback if provided, else go to community blog */
+  /** Logo click — always navigates to Home */
   const handleLogoClick = () => {
-    if (onLogoClick) {
-      onLogoClick();
-    } else {
-      navigate("/community");
-    }
+    navigate(LOGO_ROUTE);
   };
 
   const renderTab = (tab: (typeof TABS)[number]) => {
     const isActive = activeTab === tab.id;
 
-    // Text color: active = white (or gold for Fund A), inactive = gray
     const textColor =
       isActive && tab.id === HushhFooterTab.FUND_A
         ? "text-[#C1A87D]"
@@ -139,7 +125,7 @@ const HushhTechFooter: React.FC<HushhTechFooterProps> = ({
     >
       <div className="relative max-w-md mx-auto pointer-events-auto">
         <div className="h-[72px] bg-[#050505] rounded-[2rem] flex items-center justify-between px-8 relative shadow-2xl">
-          {/* Center Hushh logo button */}
+          {/* Center Hushh logo — ALWAYS goes to Home */}
           <div className="absolute left-1/2 -top-6 -translate-x-1/2 z-10">
             <button
               onClick={handleLogoClick}

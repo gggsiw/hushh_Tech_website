@@ -104,12 +104,6 @@ const ProfilePage: React.FC = () => {
       {/* ═══ Footer Nav ═══ */}
       <HushhTechFooter
         activeTab={HushhFooterTab.PROFILE}
-        onTabChange={(tab) => {
-          if (tab === HushhFooterTab.HOME) navigate('/');
-          if (tab === HushhFooterTab.FUND_A) navigate('/discover-fund-a');
-          if (tab === HushhFooterTab.COMMUNITY) navigate('/community');
-          if (tab === HushhFooterTab.PROFILE) navigate('/profile');
-        }}
       />
     </div>
   );

@@ -191,12 +191,6 @@ export default function CommunityPage() {
       {/* ═══ Footer Nav ═══ */}
       <HushhTechFooter
         activeTab={HushhFooterTab.COMMUNITY}
-        onTabChange={(tab) => {
-          if (tab === HushhFooterTab.HOME) navigate("/");
-          if (tab === HushhFooterTab.FUND_A) navigate("/discover-fund-a");
-          if (tab === HushhFooterTab.COMMUNITY) navigate("/community/events");
-          if (tab === HushhFooterTab.PROFILE) navigate("/profile");
-        }}
       />
 
       {/* ═══ NDA Modals ═══ */}
