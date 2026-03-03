@@ -386,11 +386,12 @@ const SignNDAPage: React.FC = () => {
         </section>
 
         {/* ── CTA — Sign & Continue ── */}
-        <section className="space-y-3 mb-8 md:max-w-sm md:mx-auto">
+        <section className="space-y-3 mb-8">
           <HushhTechCta
             variant={HushhTechCtaVariant.BLACK}
             onClick={handleSignNDA}
             disabled={!agreedToTerms || !signerName.trim() || isSubmitting}
+            className="md:w-full"
           >
             {isSubmitting ? 'signing...' : 'sign & continue'}
           </HushhTechCta>
