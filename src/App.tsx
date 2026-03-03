@@ -21,6 +21,7 @@ import Career from './pages/career';
 // Old monolithic community (kept as backup):
 // import CommunityList from './pages/community/communityList';
 // import CommunityPost from './pages/community/communityPost';
+import CommunityEventsPage from './pages/community-events/ui';
 import CommunityPage from './pages/community/ui';
 import CommunityPostPage from './pages/community/post-ui';
 import ReportDetailPage from './pages/reports/reportDetail';
@@ -236,7 +237,12 @@ function App() {
             <Route path="/career/*" element={<Career />} />
             <Route path='/privacy-policy' element={<PrivacyPolicy />} />
             <Route path='/carrer-privacy-policy' element={<CareersPrivacyPolicy />} />
+            {/* Community Events — main /community page */}
             <Route path="/community" element={
+              <CommunityEventsPage />
+            } />
+            {/* Old community articles preserved at /community/posts */}
+            <Route path="/community/posts" element={
               <CommunityPage />
             } />
             <Route path='/california-privacy-policy' element={<CaliforniaPrivacyPolicy />} />
