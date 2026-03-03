@@ -57,7 +57,7 @@ export default function OnboardingFinancialLink() {
     <div className="bg-white text-gray-900 min-h-screen antialiased flex flex-col selection:bg-hushh-blue selection:text-white">
       {/* Header — back + FAQs */}
       <HushhTechBackHeader
-        onBackClick={() => navigate(-1)}
+        onBackClick={() => navigate('/')}
         rightLabel="FAQs"
       />
 
