@@ -16,7 +16,6 @@
 import { useHomeLogic } from "./logic";
 import HushhTechHeader from "../../components/hushh-tech-header/HushhTechHeader";
 import HushhTechFooter, {
-  HushhFooterTab,
 } from "../../components/hushh-tech-footer/HushhTechFooter";
 import HushhTechCta, {
   HushhTechCtaVariant,
@@ -280,7 +279,6 @@ export default function HomePage() {
 
       {/* ═══ Footer Nav ═══ */}
       <HushhTechFooter
-        activeTab={HushhFooterTab.HOME}
       />
     </div>
   );

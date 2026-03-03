@@ -8,7 +8,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import HushhTechBackHeader from '../../components/hushh-tech-back-header/HushhTechBackHeader';
 import HushhTechCta, { HushhTechCtaVariant } from '../../components/hushh-tech-cta/HushhTechCta';
-import HushhTechFooter, { HushhFooterTab } from '../../components/hushh-tech-footer/HushhTechFooter';
+import HushhTechFooter from '../../components/hushh-tech-footer/HushhTechFooter';
 import HushhLogo from '../../components/images/Hushhogo.png';
 import { useProfileLogic } from './logic';
 
@@ -103,7 +103,6 @@ const ProfilePage: React.FC = () => {
 
       {/* ═══ Footer Nav ═══ */}
       <HushhTechFooter
-        activeTab={HushhFooterTab.PROFILE}
       />
     </div>
   );

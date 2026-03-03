@@ -1,17 +1,23 @@
 /**
- * HushhTechFooter — Self-contained bottom navigation bar
- * Floating dark rounded bar with center Hushh logo and 4 nav tabs.
- * All navigation is hardcoded — no page can override behavior.
- * Center logo ALWAYS goes to Home. Tabs ALWAYS go to their routes.
+ * HushhTechFooter — Sealed, self-contained bottom navigation bar.
+ * No props can override navigation behavior.
+ * Auto-detects active tab from the current URL.
  *
- * Usage:
- *   <HushhTechFooter activeTab={HushhFooterTab.HOME} />
+ * Routes:
+ *   Home       → /
+ *   Fund A     → /discover-fund-a
+ *   Center ◉   → /community (blogs)
+ *   Comm       → /community/events
+ *   Profile    → /profile
+ *
+ * Usage (zero config):
+ *   <HushhTechFooter />
  */
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import hushhLogo from "../images/Hushhogo.png";
 
-/** Enum for footer navigation tabs */
+/** Enum kept for external active-tab checks (backward compat) */
 export enum HushhFooterTab {
   HOME = "home",
   FUND_A = "fund_a",
@@ -19,14 +25,12 @@ export enum HushhFooterTab {
   PROFILE = "profile",
 }
 
+/** Only visual prop — className for positioning overrides */
 interface HushhTechFooterProps {
-  /** Currently active tab — visual only, does NOT change behavior */
-  activeTab?: HushhFooterTab;
-  /** Extra classes on root container */
   className?: string;
 }
 
-/** Hardcoded route map — tabs always navigate here */
+/** Hardcoded routes — sealed, no overrides */
 const TAB_ROUTES: Record<HushhFooterTab, string> = {
   [HushhFooterTab.HOME]: "/",
   [HushhFooterTab.FUND_A]: "/discover-fund-a",
@@ -34,10 +38,10 @@ const TAB_ROUTES: Record<HushhFooterTab, string> = {
   [HushhFooterTab.PROFILE]: "/profile",
 };
 
-/** Center logo ALWAYS navigates here */
-const LOGO_ROUTE = "/";
+/** Center logo always goes to community blogs */
+const LOGO_ROUTE = "/community";
 
-/** Tab configuration */
+/** Tab config */
 const TABS = [
   { id: HushhFooterTab.HOME, icon: "home", label: "Home" },
   { id: HushhFooterTab.FUND_A, icon: null, label: "Fund A" },
@@ -45,7 +49,19 @@ const TABS = [
   { id: HushhFooterTab.PROFILE, icon: "person", label: "Profile" },
 ];
 
-/** Fund A has a custom icon (gold circle with line) */
+/** Auto-detect active tab from pathname */
+const detectActiveTab = (pathname: string): HushhFooterTab | null => {
+  if (pathname === "/") return HushhFooterTab.HOME;
+  if (pathname.startsWith("/discover-fund-a") || pathname.startsWith("/sell-the-wall") || pathname.startsWith("/ai-powered-berkshire"))
+    return HushhFooterTab.FUND_A;
+  if (pathname.startsWith("/community/events"))
+    return HushhFooterTab.COMMUNITY;
+  if (pathname.startsWith("/profile") || pathname.startsWith("/hushh-user-profile"))
+    return HushhFooterTab.PROFILE;
+  return null;
+};
+
+/** Fund A custom icon */
 const FundAIcon: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const color = isActive ? "#C1A87D" : "#9CA3AF";
   return (
@@ -59,19 +75,20 @@ const FundAIcon: React.FC<{ isActive: boolean }> = ({ isActive }) => {
 };
 
 const HushhTechFooter: React.FC<HushhTechFooterProps> = ({
-  activeTab,
   className = "",
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const activeTab = detectActiveTab(location.pathname);
   const leftTabs = TABS.slice(0, 2);
   const rightTabs = TABS.slice(2);
 
-  /** Tab click — always navigates to hardcoded route */
+  /** Tab click — always hardcoded */
   const handleTabClick = (tabId: HushhFooterTab) => {
     navigate(TAB_ROUTES[tabId]);
   };
 
-  /** Logo click — always navigates to Home */
+  /** Logo click — always community blogs */
   const handleLogoClick = () => {
     navigate(LOGO_ROUTE);
   };
@@ -125,7 +142,7 @@ const HushhTechFooter: React.FC<HushhTechFooterProps> = ({
     >
       <div className="relative max-w-md mx-auto pointer-events-auto">
         <div className="h-[72px] bg-[#050505] rounded-[2rem] flex items-center justify-between px-8 relative shadow-2xl">
-          {/* Center Hushh logo — ALWAYS goes to Home */}
+          {/* Center Hushh logo — ALWAYS goes to /community (blogs) */}
           <div className="absolute left-1/2 -top-6 -translate-x-1/2 z-10">
             <button
               onClick={handleLogoClick}
@@ -134,7 +151,7 @@ const HushhTechFooter: React.FC<HushhTechFooterProps> = ({
                 background:
                   "radial-gradient(134.19% 134.19% at 50% 0%, #3C3C3C 0%, #1C1C1C 100%)",
               }}
-              aria-label="Hushh Home"
+              aria-label="Community Blogs"
               tabIndex={0}
             >
               <img

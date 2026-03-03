@@ -11,7 +11,6 @@ import HushhTechCta, {
   HushhTechCtaVariant,
 } from "../../components/hushh-tech-cta/HushhTechCta";
 import HushhTechFooter, {
-  HushhFooterTab,
 } from "../../components/hushh-tech-footer/HushhTechFooter";
 
 /* ── Playfair heading style ── */
@@ -100,7 +99,6 @@ export default function CommunityPostPage() {
 
         {/* Footer Nav */}
         <HushhTechFooter
-          activeTab={HushhFooterTab.COMMUNITY}
         />
       </div>
     );
@@ -122,7 +120,6 @@ export default function CommunityPostPage() {
 
       {/* Footer Nav */}
       <HushhTechFooter
-        activeTab={HushhFooterTab.COMMUNITY}
       />
     </div>
   );

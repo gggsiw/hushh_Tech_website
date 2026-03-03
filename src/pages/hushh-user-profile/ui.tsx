@@ -11,7 +11,7 @@ import { FaApple } from "react-icons/fa";
 import { SiGooglepay } from "react-icons/si";
 import HushhTechBackHeader from "../../components/hushh-tech-back-header/HushhTechBackHeader";
 import HushhTechCta, { HushhTechCtaVariant } from "../../components/hushh-tech-cta/HushhTechCta";
-import HushhTechFooter, { HushhFooterTab } from "../../components/hushh-tech-footer/HushhTechFooter";
+import HushhTechFooter from "../../components/hushh-tech-footer/HushhTechFooter";
 import NWSScoreBadge from "../../components/profile/NWSScoreBadge";
 
 /* ── Playfair heading style ── */
@@ -298,7 +298,6 @@ const HushhUserProfilePage: React.FC = () => {
 
       {/* ═══ Footer Nav ═══ */}
       <HushhTechFooter
-        activeTab={HushhFooterTab.PROFILE}
       />
     </div>
   );

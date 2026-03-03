@@ -8,7 +8,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { useCommunityListLogic } from "./logic";
 import HushhTechBackHeader from "../../components/hushh-tech-back-header/HushhTechBackHeader";
 import HushhTechFooter, {
-  HushhFooterTab,
 } from "../../components/hushh-tech-footer/HushhTechFooter";
 import NDARequestModal from "../../components/NDARequestModal";
 import NDADocumentModal from "../../components/NDADocumentModal";
@@ -190,7 +189,6 @@ export default function CommunityPage() {
 
       {/* ═══ Footer Nav ═══ */}
       <HushhTechFooter
-        activeTab={HushhFooterTab.COMMUNITY}
       />
 
       {/* ═══ NDA Modals ═══ */}

@@ -14,7 +14,6 @@ import HushhTechCta, {
   HushhTechCtaVariant,
 } from "../../components/hushh-tech-cta/HushhTechCta";
 import HushhTechFooter, {
-  HushhFooterTab,
 } from "../../components/hushh-tech-footer/HushhTechFooter";
 
 /* ── settings-style row (same as profile page) ── */
@@ -436,7 +435,6 @@ const FundA = () => {
 
       {/* ═══ Footer Nav ═══ */}
       <HushhTechFooter
-        activeTab={HushhFooterTab.FUND_A}
       />
     </div>
   );
