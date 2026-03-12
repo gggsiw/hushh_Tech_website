@@ -3,6 +3,7 @@
  * Matches the refined HTML design. Logic stays in logic.ts.
  * Uses HushhTechBackHeader + HushhTechCta reusable components.
  */
+import { useState } from "react";
 import {
   useStep1Logic,
   SHARE_CLASSES,
@@ -59,6 +60,9 @@ export default function OnboardingStep1() {
     handleNext,
     handleBack,
   } = useStep1Logic();
+
+  /* Toggle for recurring investment — OFF hides frequency/day/amount */
+  const [recurringEnabled, setRecurringEnabled] = useState(false);
 
   return (
     <div className="bg-white text-gray-900 min-h-screen antialiased flex flex-col selection:bg-hushh-blue selection:text-white">
@@ -204,7 +208,8 @@ export default function OnboardingStep1() {
                     className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300 checked:right-0 checked:border-hushh-blue transition-all duration-300"
                 id="recurring-toggle"
                 type="checkbox"
-                defaultChecked
+                checked={recurringEnabled}
+                onChange={(e) => setRecurringEnabled(e.target.checked)}
               />
               <label
                 className="toggle-label block overflow-hidden h-5 rounded-full bg-gray-200 cursor-pointer transition-colors duration-300"
@@ -213,6 +218,7 @@ export default function OnboardingStep1() {
             </div>
           </div>
 
+          {recurringEnabled && (
           <div className="space-y-0">
             {/* ── Frequency: selectable pills ── */}
             <div className="py-5 border-b border-gray-100">
@@ -353,6 +359,7 @@ export default function OnboardingStep1() {
               </div>
             </div>
           </div>
+          )}
         </section>
 
         {/* ── Error message ── */}
