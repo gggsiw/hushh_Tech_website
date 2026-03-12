@@ -26,6 +26,7 @@ interface NDANotificationPayload {
   pdfUrl?: string;
   pdfBase64?: string;
   userId?: string;
+  documentsAcknowledged?: string[];
 }
 
 // Base64URL encoding utilities
@@ -267,7 +268,8 @@ serve(async (req) => {
       signerIp = 'Unknown',
       pdfUrl,
       pdfBase64,
-      userId
+      userId,
+      documentsAcknowledged = []
     } = payload;
 
     if (!signerName || !signerEmail) {
@@ -431,6 +433,27 @@ serve(async (req) => {
                           <span style="color: #000000; font-size: 14px;">📎 The signed NDA PDF is attached to this email.</span>
                         </td>
                       </tr>
+                    </table>
+                    ` : ''}
+
+                    ${documentsAcknowledged.length > 0 ? `
+                    <!-- Fund Documents Acknowledged -->
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border: 1px solid #000000; margin-bottom: 32px;">
+                      <tr>
+                        <td style="background-color: #000000; padding: 16px 20px;">
+                          <span style="color: #ffffff; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">
+                            Fund Documents Acknowledged
+                          </span>
+                        </td>
+                      </tr>
+                      ${documentsAcknowledged.map((doc: string, i: number) => `
+                      <tr>
+                        <td style="padding: 14px 20px; ${i < documentsAcknowledged.length - 1 ? 'border-bottom: 1px solid #e5e5e5;' : ''}">
+                          <span style="color: #1a7f37; font-size: 14px; font-weight: 600;">✅</span>
+                          <span style="color: #000000; font-size: 13px; margin-left: 8px;">${doc}</span>
+                        </td>
+                      </tr>
+                      `).join('')}
                     </table>
                     ` : ''}
 

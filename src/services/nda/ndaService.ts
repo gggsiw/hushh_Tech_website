@@ -172,7 +172,8 @@ export const sendNDANotification = async (
   pdfUrl?: string,
   pdfBlob?: Blob,
   userId?: string,
-  signerIp?: string
+  signerIp?: string,
+  documentsAcknowledged?: string[]
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     // Prepare payload
@@ -184,6 +185,11 @@ export const sendNDANotification = async (
       signerIp: signerIp || 'Unknown',
       userId,
     };
+
+    // Include acknowledged fund documents list
+    if (documentsAcknowledged && documentsAcknowledged.length > 0) {
+      payload.documentsAcknowledged = documentsAcknowledged;
+    }
 
     // Include PDF URL if available
     if (pdfUrl) {

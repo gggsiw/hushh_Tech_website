@@ -1,6 +1,7 @@
 /**
- * Sign NDA Page — Aligned with onboarding step 1-8 design language.
- * Playfair Display headings, lowercase, HushhTechCta, HushhTechHeader/Footer.
+ * Sign NDA + Fund Documents Page
+ * User must sign the NDA AND acknowledge all 4 fund documents.
+ * Playfair Display headings, HushhTechHeader/Footer.
  * Backend logic (auth, NDA signing, PDF gen, notification) fully preserved.
  */
 
@@ -13,7 +14,39 @@ import HushhTechHeader from '../../components/hushh-tech-header/HushhTechHeader'
 import HushhTechFooter from '../../components/hushh-tech-footer/HushhTechFooter';
 import HushhTechCta, { HushhTechCtaVariant } from '../../components/hushh-tech-cta/HushhTechCta';
 
-/* NDA terms data */
+/* ── Fund documents config ── */
+const FUND_DOCUMENTS = [
+  {
+    id: 'delaware-feeder-lpa',
+    name: 'Delaware Feeder LPA',
+    fullName: 'Hushh Alpha Aloha Fund A Delaware Feeder LPA',
+    url: '/fund-documents/delaware-feeder-lpa.docx',
+    description: 'Limited Partnership Agreement for the Delaware Feeder Fund.',
+  },
+  {
+    id: 'investment-prospectus',
+    name: 'Investment Prospectus',
+    fullName: 'Hushh Alpha Aloha Fund A Investment Prospectus',
+    url: '/fund-documents/investment-prospectus.docx',
+    description: 'Detailed investment strategy, risks, and fund objectives.',
+  },
+  {
+    id: 'lp-master-lpa',
+    name: 'LP Master LPA',
+    fullName: 'Hushh Alpha Aloha Fund A LP Master LPA',
+    url: '/fund-documents/lp-master-lpa.docx',
+    description: 'Master Limited Partnership Agreement governing LP interests.',
+  },
+  {
+    id: 'ppm',
+    name: 'Private Placement Memorandum',
+    fullName: 'Hushh Alpha Aloha Fund A PPM',
+    url: '/fund-documents/ppm.docx',
+    description: 'Offering memorandum with terms, risks, and disclosures.',
+  },
+] as const;
+
+/* ── NDA terms data ── */
 const NDA_SECTIONS = [
   {
     title: '1. definition of confidential information',
@@ -41,6 +74,9 @@ const NDA_SECTIONS = [
   },
 ];
 
+/* ── Playfair style shortcut ── */
+const playfair = { fontFamily: "'Playfair Display', serif" };
+
 const SignNDAPage: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
@@ -53,15 +89,26 @@ const SignNDAPage: React.FC = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
+  /* Track which fund documents have been acknowledged */
+  const [docAcknowledged, setDocAcknowledged] = useState<Record<string, boolean>>(
+    Object.fromEntries(FUND_DOCUMENTS.map((d) => [d.id, false]))
+  );
+
   const [nameError, setNameError] = useState('');
   const [termsError, setTermsError] = useState('');
+
+  /* Derived: all documents acknowledged? */
+  const allDocsAcknowledged = FUND_DOCUMENTS.every((d) => docAcknowledged[d.id]);
+
+  /* Can submit? */
+  const canSubmit = agreedToTerms && allDocsAcknowledged && signerName.trim().length >= 2 && !isSubmitting;
 
   /* Cleanup on unmount */
   useEffect(() => {
     return () => { isMountedRef.current = false; };
   }, []);
 
-  /* Auth lifecycle: validate session + listen for changes */
+  /* Auth lifecycle */
   useEffect(() => {
     if (!config.supabaseClient) {
       if (isMountedRef.current) setIsLoading(false);
@@ -70,7 +117,7 @@ const SignNDAPage: React.FC = () => {
 
     const {
       data: { subscription },
-    } = config.supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    } = config.supabaseClient.auth.onAuthStateChange(async (_event, session) => {
       if (!isMountedRef.current) return;
 
       if (!session?.user) {
@@ -94,6 +141,19 @@ const SignNDAPage: React.FC = () => {
     return () => subscription?.unsubscribe();
   }, [navigate]);
 
+  /* Toggle individual document acknowledgment */
+  const handleDocToggle = useCallback((docId: string) => {
+    setDocAcknowledged((prev) => ({ ...prev, [docId]: !prev[docId] }));
+  }, []);
+
+  /* Download handler */
+  const handleDownload = useCallback((url: string, name: string) => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+  }, []);
+
   const validateForm = useCallback((): boolean => {
     let isValid = true;
 
@@ -109,14 +169,25 @@ const SignNDAPage: React.FC = () => {
     }
 
     if (!agreedToTerms) {
-      setTermsError('you must agree to the nda terms');
+      setTermsError('you must agree to the terms');
       isValid = false;
     } else {
       setTermsError('');
     }
 
+    if (!allDocsAcknowledged) {
+      toast({
+        title: 'documents required',
+        description: 'please acknowledge all fund documents before signing.',
+        status: 'warning',
+        duration: 4000,
+        isClosable: true,
+      });
+      isValid = false;
+    }
+
     return isValid;
-  }, [signerName, agreedToTerms]);
+  }, [signerName, agreedToTerms, allDocsAcknowledged, toast]);
 
   const handleSignNDA = useCallback(async () => {
     if (!validateForm()) return;
@@ -186,6 +257,9 @@ const SignNDAPage: React.FC = () => {
       if (!isMountedRef.current) return;
 
       if (result.success) {
+        /* Build list of acknowledged documents for notification */
+        const acknowledgedDocs = FUND_DOCUMENTS.map((d) => d.fullName);
+
         sendNDANotification(
           trimmedName,
           userEmail || 'unknown@email.com',
@@ -193,12 +267,14 @@ const SignNDAPage: React.FC = () => {
           result.ndaVersion || 'v1.0',
           generatedPdfUrl,
           pdfBlob,
-          userId
+          userId,
+          undefined,
+          acknowledgedDocs
         ).catch((err) => console.error('[SignNDA] Notification failed:', err));
 
         toast({
-          title: 'nda signed successfully',
-          description: 'thank you for signing the non-disclosure agreement.',
+          title: 'agreements signed successfully',
+          description: 'thank you for signing the NDA and acknowledging the fund documents.',
           status: 'success',
           duration: 4000,
           isClosable: true,
@@ -209,7 +285,7 @@ const SignNDAPage: React.FC = () => {
         navigate(redirectTo, { replace: true });
       } else {
         toast({
-          title: 'error signing nda',
+          title: 'error signing agreements',
           description: result.error || 'an error occurred. please try again.',
           status: 'error',
           duration: 5000,
@@ -255,18 +331,19 @@ const SignNDAPage: React.FC = () => {
               className="material-symbols-outlined text-white text-3xl"
               style={{ fontVariationSettings: "'FILL' 1, 'wght' 500" }}
             >
-              description
+              gavel
             </span>
           </div>
           <h1
             className="text-[2.5rem] leading-[1.1] font-normal text-black tracking-tight font-serif"
-            style={{ fontFamily: "'Playfair Display', serif" }}
+            style={playfair}
           >
-            Non-Disclosure<br />
-            <span className="text-gray-400 italic font-light">Agreement</span>
+            Investor<br />
+            <span className="text-gray-400 italic font-light">Agreements</span>
           </h1>
           <p className="text-gray-500 text-sm font-light mt-3 leading-relaxed">
-            Review and sign to access confidential investment materials.
+            Review the NDA, download the fund documents, and sign to access
+            confidential investment materials.
           </p>
         </section>
 
@@ -285,10 +362,28 @@ const SignNDAPage: React.FC = () => {
           </div>
         </section>
 
-        {/* ── Agreement Terms ── */}
-        <section className="mb-8">
+        {/* ── Step indicator ── */}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-1.5">
+            <span className="w-6 h-6 rounded-full bg-black text-white text-xs flex items-center justify-center font-semibold">1</span>
+            <span className="text-xs font-medium text-black">NDA</span>
+          </div>
+          <div className="flex-1 h-px bg-gray-200" />
+          <div className="flex items-center gap-1.5">
+            <span className="w-6 h-6 rounded-full bg-black text-white text-xs flex items-center justify-center font-semibold">2</span>
+            <span className="text-xs font-medium text-black">Fund Docs</span>
+          </div>
+          <div className="flex-1 h-px bg-gray-200" />
+          <div className="flex items-center gap-1.5">
+            <span className="w-6 h-6 rounded-full bg-black text-white text-xs flex items-center justify-center font-semibold">3</span>
+            <span className="text-xs font-medium text-black">Sign</span>
+          </div>
+        </div>
+
+        {/* ═══ STEP 1: NDA Agreement Terms ═══ */}
+        <section className="mb-10">
           <h3 className="text-[10px] tracking-[0.2em] text-gray-400 uppercase mb-4 font-medium">
-            Agreement Terms
+            Step 1 · Non-Disclosure Agreement
           </h3>
           <div className="border border-gray-200 bg-white">
             <div className="max-h-80 overflow-y-auto p-5 space-y-5 scrollbar-thin">
@@ -313,10 +408,94 @@ const SignNDAPage: React.FC = () => {
           </div>
         </section>
 
-        {/* ── Digital Signature ── */}
+        {/* ═══ STEP 2: Fund Documents ═══ */}
+        <section className="mb-10">
+          <h3 className="text-[10px] tracking-[0.2em] text-gray-400 uppercase mb-2 font-medium">
+            Step 2 · Fund Documents
+          </h3>
+          <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+            Download and review each document. Check the box to confirm you have reviewed it.
+          </p>
+
+          <div className="space-y-3">
+            {FUND_DOCUMENTS.map((doc) => {
+              const isChecked = docAcknowledged[doc.id];
+              return (
+                <div
+                  key={doc.id}
+                  className={`border rounded-xl p-4 transition-all ${
+                    isChecked
+                      ? 'border-green-300 bg-green-50/50'
+                      : 'border-gray-200 bg-white'
+                  }`}
+                >
+                  {/* Top row: icon + name + download */}
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                      <span
+                        className="material-symbols-outlined text-gray-600 text-xl"
+                        style={{ fontVariationSettings: "'FILL' 0, 'wght' 400" }}
+                      >
+                        description
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-black leading-tight">
+                        {doc.name}
+                      </p>
+                      <p className="text-[11px] text-gray-400 mt-0.5 leading-relaxed">
+                        {doc.description}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDownload(doc.url, `${doc.fullName}.docx`)}
+                      className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black text-white text-[11px] font-medium hover:bg-black/80 transition-colors"
+                      aria-label={`Download ${doc.name}`}
+                      tabIndex={0}
+                    >
+                      <span className="material-symbols-outlined text-sm">download</span>
+                      Download
+                    </button>
+                  </div>
+
+                  {/* Acknowledge checkbox */}
+                  <label className="flex items-center gap-2.5 cursor-pointer pl-1">
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => handleDocToggle(doc.id)}
+                      className="w-4 h-4 accent-green-600 shrink-0"
+                    />
+                    <span className={`text-xs leading-relaxed ${isChecked ? 'text-green-700 font-medium' : 'text-gray-500'}`}>
+                      {isChecked ? 'Reviewed ✓' : 'I have downloaded and reviewed this document'}
+                    </span>
+                  </label>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Progress indicator */}
+          <div className="mt-4 flex items-center gap-2">
+            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-green-500 rounded-full transition-all duration-300"
+                style={{
+                  width: `${(FUND_DOCUMENTS.filter((d) => docAcknowledged[d.id]).length / FUND_DOCUMENTS.length) * 100}%`,
+                }}
+              />
+            </div>
+            <span className="text-[10px] text-gray-400 font-medium shrink-0">
+              {FUND_DOCUMENTS.filter((d) => docAcknowledged[d.id]).length}/{FUND_DOCUMENTS.length} reviewed
+            </span>
+          </div>
+        </section>
+
+        {/* ═══ STEP 3: Digital Signature ═══ */}
         <section className="mb-8">
           <h3 className="text-[10px] tracking-[0.2em] text-gray-400 uppercase mb-4 font-medium">
-            Digital Signature
+            Step 3 · Digital Signature
           </h3>
 
           {/* Name input */}
@@ -358,7 +537,8 @@ const SignNDAPage: React.FC = () => {
                 />
                 <span className="text-xs text-gray-500 leading-relaxed">
                   I have read, understood, and agree to the terms of this Non-Disclosure
-                  Agreement. I acknowledge that this constitutes my legal electronic signature.
+                  Agreement. I acknowledge that I have reviewed all fund documents and
+                  that this constitutes my legal electronic signature.
                 </span>
               </label>
             </div>
@@ -384,12 +564,22 @@ const SignNDAPage: React.FC = () => {
           )}
         </section>
 
+        {/* ── Validation hint when not ready ── */}
+        {!canSubmit && signerName.trim().length >= 2 && (
+          <div className="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-xs text-amber-700 leading-relaxed">
+              {!allDocsAcknowledged && '⚠ Please acknowledge all fund documents above. '}
+              {!agreedToTerms && '⚠ Please agree to the NDA terms.'}
+            </p>
+          </div>
+        )}
+
         {/* ── CTA — Sign & Continue ── */}
         <section className="space-y-3 mb-8">
           <HushhTechCta
             variant={HushhTechCtaVariant.BLACK}
             onClick={handleSignNDA}
-            disabled={!agreedToTerms || !signerName.trim() || isSubmitting}
+            disabled={!canSubmit}
           >
             {isSubmitting ? 'signing...' : 'sign & continue'}
           </HushhTechCta>
@@ -399,6 +589,7 @@ const SignNDAPage: React.FC = () => {
         <p className="text-[11px] leading-[16px] text-gray-400 text-center font-light">
           By signing, you agree that your digital signature has the same legal validity
           as a handwritten signature under applicable electronic signature laws.
+          You also confirm that you have reviewed all fund offering documents.
         </p>
 
         {/* ── Trust Badges ── */}
@@ -414,7 +605,7 @@ const SignNDAPage: React.FC = () => {
         </section>
       </main>
 
-      {/* ═══ Common Footer with Navigation ═══ */}
+      {/* ═══ Common Footer ═══ */}
       <HushhTechFooter />
     </div>
   );
