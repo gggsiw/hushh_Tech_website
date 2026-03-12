@@ -65,7 +65,7 @@ const HushhTechHeader: React.FC<HushhTechHeaderProps> = ({
 
   const positionClasses = fixed
     ? "fixed top-0 left-0 right-0 z-50"
-    : "relative z-10";
+    : "sticky top-0 z-50";
 
   return (
     <>
