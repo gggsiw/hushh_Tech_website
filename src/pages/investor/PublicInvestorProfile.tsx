@@ -27,6 +27,7 @@ const PublicInvestorProfilePage: React.FC = () => {
   const toast = useToast();
   const [profileData, setProfileData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [expandedFields, setExpandedFields] = useState<Set<string>>(new Set());
   const contentRef = React.useRef<HTMLDivElement>(null);
@@ -76,15 +77,9 @@ const PublicInvestorProfilePage: React.FC = () => {
           })
         }).catch(err => console.log('Email notification failed:', err));
         
-      } catch (error: any) {
-        console.error("Error fetching profile:", error);
-        toast({
-          title: "Profile Not Found",
-          description: "This investor profile doesn't exist or is private",
-          status: "error",
-          duration: 5000,
-        });
-        navigate('/');
+      } catch (err: any) {
+        console.error("Error fetching profile:", err);
+        setError(err?.message || "This investor profile doesn't exist or is private");
       } finally {
         setLoading(false);
       }
@@ -175,8 +170,34 @@ const PublicInvestorProfilePage: React.FC = () => {
     );
   }
 
-  if (!profileData) {
-    return null;
+  if (!profileData || error) {
+    return (
+      <div className="bg-white min-h-screen flex items-center justify-center px-4" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <div className="text-center max-w-sm">
+          <div className="w-20 h-20 bg-[#F3F4F6] rounded-full flex items-center justify-center mx-auto mb-6">
+            <User className="w-10 h-10 text-[#9CA3AF]" />
+          </div>
+          <h1 className="text-2xl font-bold text-[#111827] mb-2">Profile Not Found</h1>
+          <p className="text-sm text-[#6B7280] mb-6">
+            This investor profile doesn't exist, is private, or the link may be incorrect.
+          </p>
+          <div className="space-y-3">
+            <button
+              onClick={() => navigate('/')}
+              className="w-full bg-[#2B8CEE] hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-xl shadow-md transition-all"
+            >
+              Go to Home
+            </button>
+            <button
+              onClick={() => navigate('/investor-profile')}
+              className="w-full bg-[#F3F4F6] hover:bg-[#E5E7EB] text-[#374151] font-semibold py-3 px-6 rounded-xl transition-all"
+            >
+              Create Your Own Profile
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const maskedData = maskProfileData(profileData);

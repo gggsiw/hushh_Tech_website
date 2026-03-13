@@ -51,6 +51,17 @@ const UNAUTHENTICATED_PUBLIC_ROUTES = [
   '/benefits',
 ];
 
+// Public profile routes that should ALWAYS be accessible (even for authenticated users)
+// These are shared links that anyone should be able to open
+const PUBLIC_PROFILE_ROUTES = [
+  '/investor/',  // /investor/:slug — public shared profile pages
+];
+
+// Check if path is a public profile route (bypass NDA for these)
+const isPublicProfileRoute = (pathname: string): boolean => {
+  return PUBLIC_PROFILE_ROUTES.some(route => pathname.startsWith(route));
+};
+
 // Check if path is an auth-related route
 const isAuthRoute = (pathname: string): boolean => {
   return AUTH_ROUTES.some(route => 
@@ -81,6 +92,14 @@ const GlobalNDAGate: React.FC<GlobalNDAGateProps> = ({ children, session }) => {
       
       // Always allow auth-related routes (login, signup, sign-nda, callback)
       if (isAuthRoute(pathname)) {
+        setIsChecking(false);
+        setHasSignedNDA(true);
+        return;
+      }
+
+      // Always allow public profile routes (shared investor profiles)
+      // These must be accessible by ANYONE — authenticated or not, NDA or not
+      if (isPublicProfileRoute(pathname)) {
         setIsChecking(false);
         setHasSignedNDA(true);
         return;

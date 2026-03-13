@@ -277,6 +277,11 @@ export async function fetchPublicInvestorProfileBySlug(slug: string): Promise<an
     throw new Error(`Public profile not found: ${error.message}`);
   }
 
+  // FIX: Null-check — profile can be null if is_public/user_confirmed are false
+  if (!profile) {
+    throw new Error('Profile not found or is private');
+  }
+
   // Fetch onboarding_data for this user
   const { data: onboardingData, error: onboardingError } = await supabase
     .from('onboarding_data')
@@ -324,7 +329,7 @@ export async function regenerateProfileSlug(): Promise<string> {
     throw new Error(`Failed to regenerate slug: ${error.message}`);
   }
 
-  return data.slug;
+  return data?.slug || '';
 }
 
 /**
