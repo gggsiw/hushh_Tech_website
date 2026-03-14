@@ -43,6 +43,7 @@ jobs:
             --min-instances 0 \
             --max-instances 5 \
             --set-env-vars "NODE_ENV=staging" \
+            --clear-base-image \
             --quiet
 
       - name: Show URL

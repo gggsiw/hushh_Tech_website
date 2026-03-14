@@ -43,6 +43,7 @@ jobs:
             --min-instances 1 \
             --max-instances 10 \
             --set-env-vars "NODE_ENV=production" \
+            --clear-base-image \
             --quiet
 
       - name: Show URL
