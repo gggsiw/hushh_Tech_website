@@ -1,52 +1,42 @@
-# =============================================================================
-# GitHub Actions — Deploy to GCP Cloud Run (PROD)
-# Trigger: Push to `main` branch
-# =============================================================================
 name: Deploy to PROD
-
 on:
   push:
     branches: [main]
 
-env:
-  PROJECT_ID: hushh-tech-prod
-  SERVICE_NAME: hushh-tech-website
-  REGION: us-central1
-
 jobs:
   deploy:
+    name: Build & Deploy to Cloud Run (PROD)
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
+      # 1. Build Vite app in runner (FAST)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx vite build
+
+      # 2. Auth with GCP
+      - uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY_PROD }}
 
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v2
 
+      # 3. Deploy pre-built dist/ to Cloud Run (runtime-only Dockerfile)
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy $SERVICE_NAME \
+          gcloud run deploy hushh-tech-website \
             --source . \
-            --region $REGION \
-            --project $PROJECT_ID \
+            --project=hushh-tech-prod \
+            --region=us-central1 \
+            --platform=managed \
             --allow-unauthenticated \
-            --memory 512Mi \
-            --cpu 1 \
-            --min-instances 1 \
-            --max-instances 10 \
-            --set-env-vars "NODE_ENV=production" \
-            --clear-base-image \
+            --memory=512Mi \
+            --cpu=1 \
+            --min-instances=1 \
+            --max-instances=10 \
+            --port=8080 \
             --quiet
-
-      - name: Show URL
-        run: |
-          echo "✅ PROD deployed!"
-          gcloud run services describe $SERVICE_NAME --region $REGION --project $PROJECT_ID --format="value(status.url)"

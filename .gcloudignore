@@ -1,40 +1,49 @@
-# =============================================================================
-# GCloud Ignore — controls what gets uploaded to Cloud Build
-# This overrides .gitignore to INCLUDE dist/ (pre-built Vite output)
-# =============================================================================
+# Override .gitignore for dist/ — we NEED it in the container
+!dist/
+!dist
 
-# Include dist/ (needed for runtime-only Dockerfile)
-# !dist/  ← dist is NOT ignored here
+# Only upload what the runtime-only Dockerfile needs:
+# Dockerfile, dist/, server.js, package-server.json, api/
+# Everything else is excluded for fast uploads
 
-# Dependencies
 node_modules/
-
-# Git
 .git/
 .github/
-
-# IDE
 .vscode/
 .cursor/
-
-# Source code (not needed for runtime-only Docker build)
 src/
-
-# Mobile
 android/
 ios/
-
-# Tests
-tests/
-
-# SQL
 supabase/
-*.sql
-
-# Docs
+tests/
 docs/
-
-# Misc
-playstore-assets/
+scripts/
+files/
 hushh_api_reports/
+playstore-assets/
+public/
+cloud-run/
+*.sql
 *.md
+*.yml
+*.yaml
+!Dockerfile
+tsconfig*.json
+vite.config.ts
+vitest.config.ts
+eslint.config.js
+postcss.config.js
+tailwind.config.js
+contentlayer.config.js
+capacitor.config.ts
+dangerfile.ts
+custom.d.ts
+/index.html
+package-lock.json
+.env*
+.cursorrules
+.coderabbit.yaml
+.gitignore
+*.sh
+*.txt
+*.tsbuildinfo
