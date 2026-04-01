@@ -166,14 +166,22 @@ describe('Step 4 location refresh logic', () => {
 
     expect(readSharedLocationCacheMock).toHaveBeenCalledWith('user-123');
     expect(refreshStep4LocationMock).toHaveBeenCalledWith('user-123');
-    expect(container.querySelector('[data-testid="citizenship"]')?.textContent).toBe('');
-    expect(container.querySelector('[data-testid="residence"]')?.textContent).toBe('');
+    // Cached GPS data (India) pre-fills the country dropdowns when onboarding step < 4
+    expect(container.querySelector('[data-testid="citizenship"]')?.textContent).toBe('India');
+    expect(container.querySelector('[data-testid="residence"]')?.textContent).toBe('India');
     expect(container.querySelector('[data-testid="detected-location"]')?.textContent).toContain('Mumbai');
     expect(container.querySelector('[data-testid="status"]')?.textContent).toBe('success');
     expect(getCachedLocationMock).not.toHaveBeenCalled();
   });
 
   it('does not overwrite non-empty saved countries when the fresh location changes', async () => {
+    // Mock geolocation permission as 'granted' so auto-detection runs
+    // (no cached location → code checks permission before calling refreshStep4Location)
+    Object.defineProperty(navigator, 'permissions', {
+      value: { query: vi.fn().mockResolvedValue({ state: 'granted' }) },
+      configurable: true,
+    });
+
     const freshRecord = createLocationRecord(usLocation);
     maybeSingleMock.mockResolvedValue({
       data: {
