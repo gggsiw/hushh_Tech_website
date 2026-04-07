@@ -6,11 +6,10 @@
  * - OAuth sign-in handlers (Apple, Google)
  * - Loading state management
  */
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import services from "../../services/services";
-import config from "../../resources/config/config";
 import { DEFAULT_AUTH_REDIRECT, sanitizeInternalRedirect } from "../../utils/security";
+import { useAuthSession } from "../../auth/AuthSessionProvider";
 
 /* ─── Types ─── */
 export interface LoginLogic {
@@ -23,8 +22,8 @@ export interface LoginLogic {
 /* ─── Main Hook ─── */
 export const useLoginLogic = (): LoginLogic => {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const { status, startOAuth } = useAuthSession();
 
   // Stable redirect path — computed once from URL params
   const redirectPath = useMemo(() => {
@@ -34,48 +33,33 @@ export const useLoginLogic = (): LoginLogic => {
 
   /* Auth session listener — redirect if already logged in */
   useEffect(() => {
-    if (!config.supabaseClient) {
-      setIsLoading(false);
-      return;
+    if (status === "authenticated") {
+      navigate(redirectPath, { replace: true });
     }
-
-    const {
-      data: { subscription },
-    } = config.supabaseClient.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        navigate(redirectPath, { replace: true });
-      } else {
-        setIsLoading(false);
-      }
-    });
-
-    return () => subscription?.unsubscribe();
-  }, [navigate, redirectPath]);
+  }, [navigate, redirectPath, status]);
 
   /* Apple OAuth — prevent double-clicks */
   const handleAppleSignIn = useCallback(async () => {
     if (isSigningIn) return;
     setIsSigningIn(true);
-    try {
-      await services.authentication.appleSignIn();
-    } catch {
+    const initiated = await startOAuth("apple");
+    if (!initiated) {
       setIsSigningIn(false);
     }
-  }, [isSigningIn]);
+  }, [isSigningIn, startOAuth]);
 
   /* Google OAuth — prevent double-clicks */
   const handleGoogleSignIn = useCallback(async () => {
     if (isSigningIn) return;
     setIsSigningIn(true);
-    try {
-      await services.authentication.googleSignIn();
-    } catch {
+    const initiated = await startOAuth("google");
+    if (!initiated) {
       setIsSigningIn(false);
     }
-  }, [isSigningIn]);
+  }, [isSigningIn, startOAuth]);
 
   return {
-    isLoading,
+    isLoading: status === "booting",
     isSigningIn,
     handleAppleSignIn,
     handleGoogleSignIn,

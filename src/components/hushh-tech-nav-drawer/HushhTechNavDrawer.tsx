@@ -6,6 +6,7 @@
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import hushhLogo from "../images/Hushhogo.png";
+import { useAuthSession } from "../../auth/AuthSessionProvider";
 
 interface NavItem {
   icon: string;
@@ -46,6 +47,8 @@ const HushhTechNavDrawer: React.FC<HushhTechNavDrawerProps> = ({
   onClose,
 }) => {
   const navigate = useNavigate();
+  const { status, signOut } = useAuthSession();
+  const isAuthenticated = status === "authenticated";
 
   /* Lock body scroll when drawer is open */
   useEffect(() => {
@@ -64,8 +67,9 @@ const HushhTechNavDrawer: React.FC<HushhTechNavDrawerProps> = ({
     navigate(path);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     onClose();
+    await signOut();
     navigate("/login");
   };
 
@@ -159,32 +163,51 @@ const HushhTechNavDrawer: React.FC<HushhTechNavDrawerProps> = ({
 
         {/* ── Footer section ── */}
         <div className="mt-12 pt-8 border-t border-gray-100 space-y-6">
-          <button
-            onClick={() => handleNavigate("/profile")}
-            className="flex items-center gap-5 group w-full text-left"
-          >
-            <div className="w-8 h-8 rounded-full bg-hushh-blue text-white flex items-center justify-center">
-              <span className="material-symbols-outlined !text-[1.1rem]">person</span>
-            </div>
-            <span className="text-[0.95rem] font-medium text-gray-900 tracking-wide group-hover:text-hushh-blue transition-colors">
-              View Profile
-            </span>
-          </button>
+          {isAuthenticated ? (
+            <>
+              <button
+                onClick={() => handleNavigate("/hushh-user-profile")}
+                className="flex items-center gap-5 group w-full text-left"
+              >
+                <div className="w-8 h-8 rounded-full bg-hushh-blue text-white flex items-center justify-center">
+                  <span className="material-symbols-outlined !text-[1.1rem]">person</span>
+                </div>
+                <span className="text-[0.95rem] font-medium text-gray-900 tracking-wide group-hover:text-hushh-blue transition-colors">
+                  View Profile
+                </span>
+              </button>
 
-          <div className="flex flex-col gap-4 pl-[3.25rem]">
-            <button
-              onClick={handleLogout}
-              className="text-left text-[0.85rem] font-medium text-gray-500 hover:text-red-500 transition-colors tracking-wide"
-            >
-              Log Out
-            </button>
-            <button
-              onClick={() => handleNavigate("/delete-account")}
-              className="text-left text-[0.85rem] font-medium text-gray-400 hover:text-red-500 transition-colors tracking-wide"
-            >
-              Delete Account
-            </button>
-          </div>
+              <div className="flex flex-col gap-4 pl-[3.25rem]">
+                <button
+                  onClick={() => void handleLogout()}
+                  className="text-left text-[0.85rem] font-medium text-gray-500 hover:text-red-500 transition-colors tracking-wide"
+                >
+                  Log Out
+                </button>
+                <button
+                  onClick={() => handleNavigate("/delete-account")}
+                  className="text-left text-[0.85rem] font-medium text-gray-400 hover:text-red-500 transition-colors tracking-wide"
+                >
+                  Delete Account
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col gap-4 pl-[3.25rem]">
+              <button
+                onClick={() => handleNavigate("/login")}
+                className="text-left text-[0.85rem] font-medium text-gray-500 hover:text-hushh-blue transition-colors tracking-wide"
+              >
+                Log In
+              </button>
+              <button
+                onClick={() => handleNavigate("/signup")}
+                className="text-left text-[0.85rem] font-medium text-gray-400 hover:text-hushh-blue transition-colors tracking-wide"
+              >
+                Sign Up
+              </button>
+            </div>
+          )}
 
           {/* Decorative bar */}
           <div className="flex items-center gap-2 pl-[3.25rem] pt-4 opacity-50 grayscale">

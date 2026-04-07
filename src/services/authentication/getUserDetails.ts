@@ -1,4 +1,5 @@
 import config from "../../resources/config/config";
+import { getValidatedSession } from "../../auth/session";
 
 /**
  * Get the current user's session details using the Supabase client.
@@ -7,9 +8,8 @@ import config from "../../resources/config/config";
  */
 export default async function getUserDetails(setUserDetails: Function | null) {
   try {
-    const { data, error } = await config.supabaseClient!.auth.getSession();
-
-    if (error || !data?.session) {
+    const snapshot = await getValidatedSession(config.supabaseClient);
+    if (snapshot.status !== "authenticated" || !snapshot.session) {
       const emptyResult = { data: null };
       if (setUserDetails) setUserDetails(emptyResult);
       return emptyResult;
@@ -17,7 +17,7 @@ export default async function getUserDetails(setUserDetails: Function | null) {
 
     // Return session in the same shape as before: { data: session }
     // so callers can access data.access_token, data.user, etc.
-    const userDetails = { data: data.session };
+    const userDetails = { data: snapshot.session };
 
     if (setUserDetails) setUserDetails(userDetails);
     return userDetails;

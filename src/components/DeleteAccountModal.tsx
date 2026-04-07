@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useToast } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import config from "../resources/config/config";
+import { useAuthSession } from "../auth/AuthSessionProvider";
 
 interface DeleteAccountModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ const DeleteAccountModal = ({
 }: DeleteAccountModalProps) => {
   const { t } = useTranslation();
   const toast = useToast();
+  const { handleAccountDeleted } = useAuthSession();
   const [confirmText, setConfirmText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -87,14 +89,7 @@ const DeleteAccountModal = ({
       }
 
       console.log("[DeleteAccount] Account deleted successfully");
-
-      localStorage.setItem("accountJustDeleted", "true");
-      const keysToRemove = Object.keys(localStorage).filter(
-        (key) => key !== "accountJustDeleted"
-      );
-      keysToRemove.forEach((key) => localStorage.removeItem(key));
-
-      await config.supabaseClient.auth.signOut();
+      await handleAccountDeleted();
 
       toast({
         title: t("deleteAccount.successTitle"),

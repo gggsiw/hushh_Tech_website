@@ -3,16 +3,16 @@
  * Session, onboarding status, NDA check (once, no polling).
  * UI stays in ui.tsx.
  */
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import config from '../../resources/config/config';
 import { getContinueOnboardingCta } from '../../services/onboarding/flow';
+import { useAuthSession } from '../../auth/AuthSessionProvider';
 
 export function useProfileLogic() {
   const navigate = useNavigate();
-
-  const [session, setSession] = useState<any>(null);
+  const { session } = useAuthSession();
   const [ndaApproved, setNdaApproved] = useState(false);
   const ndaCheckedRef = useRef(false);
 
@@ -28,20 +28,6 @@ export function useProfileLogic() {
     currentStep: 1,
     loading: true,
   });
-
-  /* session setup */
-  useEffect(() => {
-    config.supabaseClient?.auth
-      .getSession()
-      .then(({ data: { session } }: any) => setSession(session));
-
-    const { data: { subscription } } =
-      config.supabaseClient?.auth.onAuthStateChange((_event: any, s: any) => {
-        setSession(s);
-      }) ?? { data: { subscription: null } };
-
-    return () => subscription?.unsubscribe?.();
-  }, []);
 
   /* check onboarding status (once when session loads) */
   useEffect(() => {

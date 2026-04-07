@@ -14,13 +14,12 @@
 
 import React, { useEffect, useState, ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Session } from '@supabase/supabase-js';
 import { Box, Spinner, VStack, Text } from '@chakra-ui/react';
 import { checkNDAStatus } from '../services/nda/ndaService';
+import { useAuthSession } from '../auth/AuthSessionProvider';
 
 interface GlobalNDAGateProps {
   children: ReactNode;
-  session: Session | null;
 }
 
 // MINIMAL routes that bypass NDA check for authenticated users
@@ -81,9 +80,10 @@ const isUnauthenticatedPublicRoute = (pathname: string): boolean => {
   });
 };
 
-const GlobalNDAGate: React.FC<GlobalNDAGateProps> = ({ children, session }) => {
+const GlobalNDAGate: React.FC<GlobalNDAGateProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { session, status } = useAuthSession();
   const [isChecking, setIsChecking] = useState(true);
   const [hasSignedNDA, setHasSignedNDA] = useState<boolean | null>(null);
 
@@ -113,7 +113,15 @@ const GlobalNDAGate: React.FC<GlobalNDAGateProps> = ({ children, session }) => {
       }
 
       // If no session (not logged in), allow access to public pages
-      if (!session?.user?.id) {
+      if (status === 'booting') {
+        if (!cancelled) {
+          setIsChecking(true);
+          setHasSignedNDA(null);
+        }
+        return;
+      }
+
+      if (!session?.user?.id || status !== 'authenticated') {
         // Allow public marketing pages for non-authenticated users
         if (!cancelled) {
           setIsChecking(false);
@@ -163,7 +171,7 @@ const GlobalNDAGate: React.FC<GlobalNDAGateProps> = ({ children, session }) => {
     return () => {
       cancelled = true;
     };
-  }, [session?.user?.id, location.pathname, navigate]);
+  }, [session?.user?.id, location.pathname, navigate, status]);
 
   // Show loading state while checking - Apple-style black/white design
   if (isChecking) {

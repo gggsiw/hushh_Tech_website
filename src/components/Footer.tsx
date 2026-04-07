@@ -1,32 +1,12 @@
-import { useEffect, useState } from "react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import config from "../resources/config/config";
 import { FaGlobe, FaAt, FaRss, FaPhone } from "react-icons/fa";
 import HushhLogo from "./images/Hushhogo.png";
+import { useAuthSession } from "../auth/AuthSessionProvider";
 
 export default function Footer() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  useEffect(() => {
-    // Fetch the current session
-    config.supabaseClient?.auth.getSession().then(({ data: { session } }) => {
-      setIsLoggedIn(!!session);
-    });
-
-    // Listen for auth state changes
-    const {
-      data: { subscription },
-    } = config.supabaseClient?.auth.onAuthStateChange((_event, session) => {
-      setIsLoggedIn(!!session);
-    }) ?? { data: { subscription: null } };
-
-    return () => {
-      if (subscription && typeof subscription.unsubscribe === "function") {
-        subscription.unsubscribe();
-      }
-    };
-  }, []);
+  const { status } = useAuthSession();
+  const isLoggedIn = status === "authenticated";
 
   // Function to handle PDF download
   const handleDownload = (pdfPath: string) => {

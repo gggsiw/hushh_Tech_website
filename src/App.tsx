@@ -25,8 +25,7 @@ import CareersPrivacyPolicy from './pages/career-privacy-policy';
 import CaliforniaPrivacyPolicy from './pages/california-privacy-policy';
 import EUUKPrivacyPolicy from './pages/eu-uk-privacy-policy';
 import DeleteAccountPage from './pages/delete-account';
-import { useState, useEffect, ReactNode } from 'react';
-import config from './resources/config/config';
+import { useEffect, ReactNode } from 'react';
 import Profile from './pages/profile';
 import AuthCallback from './pages/AuthCallback';
 import KYCVerificationPage from './pages/kyc-verification/page';
@@ -34,7 +33,6 @@ import NDARequestModalComponent from './components/NDARequestModal';
 import UserProfilePage from './pages/user-profile/page';
 import InvestorProfilePage from './pages/investor-profile';
 import KYCFormPage from './pages/kyc-form/page';
-import { Session } from '@supabase/supabase-js';
 import DiscoverFundA from './pages/discover-fund-a';
 import SellTheWallPage from './pages/sell-the-wall';
 import AIPoweredBerkshirePage from './pages/ai-powered-berkshire';
@@ -80,6 +78,7 @@ import GlobalNDAGate from './components/GlobalNDAGate';
 import SignNDAPage from './pages/sign-nda';
 import DocumentViewerPage from './pages/document-viewer';
 import NDAAdminPage from './pages/nda-admin';
+import { AuthSessionProvider } from './auth/AuthSessionProvider';
 
 // Google Analytics configuration
 const GA_TRACKING_ID = 'G-R58S9WWPM0';
@@ -177,40 +176,9 @@ const initializeGoogleAnalytics = () => {
 };
 
 function App() {
-  const [session, setSession] = useState<Session | null>(null);
-
   // Initialize Google Analytics
   useEffect(() => {
     initializeGoogleAnalytics();
-  }, []);
-
-  // Fetch user session when app loads
-  useEffect(() => {
-    if (config.supabaseClient) {
-      const syncSessionIfUserChanged = (nextSession: Session | null) => {
-        setSession((currentSession) => {
-          const currentUserId = currentSession?.user?.id ?? null;
-          const nextUserId = nextSession?.user?.id ?? null;
-          const currentAccessToken = currentSession?.access_token ?? null;
-          const nextAccessToken = nextSession?.access_token ?? null;
-          const isSameSession = currentUserId === nextUserId && currentAccessToken === nextAccessToken;
-          return isSameSession ? currentSession : nextSession;
-        });
-      };
-
-      config.supabaseClient.auth.getSession().then(({ data: { session } }) => {
-        syncSessionIfUserChanged(session);
-      });
-
-      // Listen for auth state changes
-      const {
-        data: { subscription },
-      } = config.supabaseClient.auth.onAuthStateChange((_event, nextSession) => {
-        syncSessionIfUserChanged(nextSession);
-      });
-
-      return () => subscription?.unsubscribe();
-    }
   }, []);
 
   // Inner layout component that uses hooks for conditional rendering
@@ -468,13 +436,15 @@ function App() {
 
   return (
     <ChakraProvider theme={theme}>
-      <Router>
-        <ScrollToTop />
-        <OnboardingShellAutoPadding />
-        <GlobalNDAGate session={session}>
-          <AppLayout />
-        </GlobalNDAGate>
-      </Router>
+      <AuthSessionProvider>
+        <Router>
+          <ScrollToTop />
+          <OnboardingShellAutoPadding />
+          <GlobalNDAGate>
+            <AppLayout />
+          </GlobalNDAGate>
+        </Router>
+      </AuthSessionProvider>
     </ChakraProvider>
   );
 }

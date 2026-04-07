@@ -4,11 +4,13 @@ import { Box, Container, Heading, Text, Spinner, Button, Flex, Icon, Alert, Aler
 import { CheckCircle, AlertTriangle } from 'lucide-react';
 import config from '../resources/config/config';
 import { DEFAULT_AUTH_REDIRECT, sanitizeInternalRedirect } from '../utils/security';
+import { useAuthSession } from '../auth/AuthSessionProvider';
 
 
 const AuthCallback: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { revalidateSession } = useAuthSession();
   const [verificationStatus, setVerificationStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
@@ -65,19 +67,17 @@ const AuthCallback: React.FC = () => {
           return;
         }
 
-        // Handle OAuth code exchange (Apple/PKCE) so we actually get a session/JWT on Safari/iOS
+        // Always exchange an OAuth code when present. A stale cached session must not
+        // block the new Apple/Google identity from becoming the active session.
         if (code) {
-          const { data: existingSession } = await supabase.auth.getSession();
-          if (!existingSession.session) {
-            const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-            if (exchangeError) {
-              setVerificationStatus('error');
-              setErrorMessage(exchangeError.message);
-              console.error('[Hushh][AuthCallback] Code exchange failed', exchangeError);
-              return;
-            }
-            console.info('[Hushh][AuthCallback] Code exchange succeeded, session created');
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) {
+            setVerificationStatus('error');
+            setErrorMessage(exchangeError.message);
+            console.error('[Hushh][AuthCallback] Code exchange failed', exchangeError);
+            return;
           }
+          console.info('[Hushh][AuthCallback] Code exchange succeeded, session created');
 
           // Clean the URL to avoid re-exchanging the same code on refresh
           const cleanUrl = window.location.origin + window.location.pathname;
@@ -109,80 +109,36 @@ const AuthCallback: React.FC = () => {
             console.error('[Hushh][AuthCallback] setSession failed', error);
             return;
           }
-
-          // Get the current user
-          const { data: { user } } = await supabase.auth.getUser() || { data: { user: null } };
-
-          if (!user) {
-            setVerificationStatus('error');
-            setErrorMessage('Could not retrieve user information');
-            console.error('[Hushh][AuthCallback] No user after setSession');
-            return;
-          }
-
-          // Check if user has completed onboarding
-          const { data: onboardingData } = await supabase
-            ?.from('onboarding_data')
-            .select('is_completed, current_step')
-            .eq('user_id', user.id)
-            .single() || { data: null };
-
-          // Proceed to success/redirect directly (no MFA check)
-          queueWelcomeToast(user.id);
-          setVerificationStatus('success');
-          setTimeout(() => {
-            const hasCompletedOnboarding = onboardingData?.is_completed ?? false;
-            navigate(getRedirectDestination(hasCompletedOnboarding));
-          }, 1200);
-
-        } else {
-          // Handle other auth types (OAuth, etc.)
-          // If a session is already present (e.g., implicit flow), this will return it
-          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-          if (sessionError) {
-            setVerificationStatus('error');
-            setErrorMessage(sessionError.message);
-            console.error('[Hushh][AuthCallback] getSession error', sessionError);
-            return;
-          }
-
-          if (!session) {
-            setVerificationStatus('error');
-            setErrorMessage('No active session found. Please try signing in again.');
-            console.error('[Hushh][AuthCallback] No active session after callback');
-            return;
-          }
-
-          // Get the current user
-          const { data: { user } } = await supabase.auth.getUser() || { data: { user: null } };
-
-          if (user) {
-            // Check if user has completed onboarding
-            const { data: onboardingData } = await supabase
-              .from('onboarding_data')
-              .select('is_completed, current_step')
-              .eq('user_id', user.id)
-              .maybeSingle(); // Use maybeSingle() to handle cases where no record exists
-            console.info('[Hushh][AuthCallback] Session restored', { userId: user.id, email: user.email, onboardingFound: !!onboardingData });
-
-            // Proceed to success/redirect directly (no MFA check)
-            console.log('[AuthCallback] Proceeding to redirect (2FA disabled)');
-            queueWelcomeToast(user.id);
-            setVerificationStatus('success');
-            setTimeout(() => {
-              const hasCompletedOnboarding = onboardingData?.is_completed ?? false;
-              navigate(getRedirectDestination(hasCompletedOnboarding));
-            }, 1200);
-
-          } else {
-            setVerificationStatus('success');
-            setTimeout(() => {
-              navigate(getRedirectDestination(false));
-            }, 1200);
-
-          }
         }
+
+        const sessionSnapshot = await revalidateSession();
+
+        if (sessionSnapshot.status !== 'authenticated' || !sessionSnapshot.user) {
+          setVerificationStatus('error');
+          setErrorMessage('No active session found. Please try signing in again.');
+          console.error('[Hushh][AuthCallback] No valid session after callback', sessionSnapshot);
+          return;
+        }
+
+        const user = sessionSnapshot.user;
+        const { data: onboardingData } = await supabase
+          .from('onboarding_data')
+          .select('is_completed, current_step')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        console.info('[Hushh][AuthCallback] Session restored', {
+          userId: user.id,
+          email: user.email,
+          onboardingFound: !!onboardingData,
+        });
+
+        queueWelcomeToast(user.id);
+        setVerificationStatus('success');
+        setTimeout(() => {
+          const hasCompletedOnboarding = onboardingData?.is_completed ?? false;
+          navigate(getRedirectDestination(hasCompletedOnboarding));
+        }, 1200);
       } catch (err) {
         console.error('Verification error:', err);
         setVerificationStatus('error');
@@ -191,7 +147,7 @@ const AuthCallback: React.FC = () => {
     };
 
     handleEmailVerification();
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, revalidateSession]);
 
   const redirectToLogin = () => {
     navigate('/login');

@@ -10,6 +10,7 @@ import { useToast } from "@chakra-ui/react";
 import config from "../../resources/config/config";
 import { getPosts, PostData } from "../../data/posts";
 import { formatShortDate, parseDate } from "../../utils/dateFormatter";
+import { useAuthSession } from "../../auth/AuthSessionProvider";
 
 /* ── Constants ── */
 export const NDA_OPTION = "Sensitive Documents (NDA approval Req.)";
@@ -76,6 +77,7 @@ export const useCommunityListLogic = () => {
   const toast = useToast();
   const navigate = useNavigate();
   const mountRef = useRef(true);
+  const { session } = useAuthSession();
 
   /* local posts */
   const localPosts = useMemo<PostData[]>(() => getPosts(), []);
@@ -89,7 +91,6 @@ export const useCommunityListLogic = () => {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [ndaApproved, setNdaApproved] = useState(false);
-  const [session, setSession] = useState<any>(null);
   const [showNdaModal, setShowNdaModal] = useState(false);
   const [showNdaDocModal, setShowNdaDocModal] = useState(false);
   const [ndaMetadata, setNdaMetadata] = useState<any>(null);
@@ -123,17 +124,6 @@ export const useCommunityListLogic = () => {
       }
     };
     if (mountRef.current) fetchReports();
-  }, []);
-
-  /* session setup */
-  useEffect(() => {
-    config.supabaseClient?.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-    });
-    const sub = config.supabaseClient?.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
-    })?.data.subscription;
-    return () => sub && sub.unsubscribe();
   }, []);
 
   /* category lists */

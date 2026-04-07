@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import config from '../resources/config/config';
 import { getCanonicalOnboardingRoute } from '../services/onboarding/flow';
+import { useAuthSession } from '../auth/AuthSessionProvider';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -10,45 +11,31 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { session, status } = useAuthSession();
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   const checkAuthAndOnboarding = async () => {
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-    let subscription: any = null;
     try {
+      if (status === 'booting') {
+        setIsLoading(true);
+        return;
+      }
+
       if (!config.supabaseClient) {
         navigate("/login", { replace: true });
         return;
       }
 
-      const supabase = config.supabaseClient;
-      let { data: { session } } = await supabase.auth.getSession();
-
-      if (!session?.user) {
-        await new Promise<void>((resolve) => {
-          const { data } = supabase.auth.onAuthStateChange((_, newSession) => {
-            if (newSession?.user) { session = newSession; resolve(); }
-          });
-          subscription = data.subscription;
-          timeout = setTimeout(() => resolve(), 1500);
-        });
-        if (timeout) clearTimeout(timeout);
-        if (subscription) subscription.unsubscribe();
-
-        if (!session?.user) {
-          navigate("/login", { replace: true });
-          return;
-        }
-      }
-
       const user = session?.user;
       if (!user) {
-        navigate("/login", { replace: true });
+        navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`, {
+          replace: true,
+        });
         return;
       }
 
-      const { data: onboardingData } = await supabase
+      const { data: onboardingData } = await config.supabaseClient
         .from('onboarding_data')
         .select('is_completed, current_step')
         .eq('user_id', user.id)
@@ -68,15 +55,20 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
       setIsAuthorized(true);
     } catch (error) {
       console.error("Error checking auth:", error);
-      navigate("/login", { replace: true });
+      navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`, {
+        replace: true,
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
+    if (status !== 'authenticated') {
+      setIsAuthorized(false);
+    }
     checkAuthAndOnboarding();
-  }, [navigate, location.pathname]);
+  }, [navigate, location.pathname, session?.user?.id, status]);
 
   if (isLoading) {
     return (

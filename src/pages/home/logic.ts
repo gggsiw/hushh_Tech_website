@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { Session } from "@supabase/supabase-js";
 import config from "../../resources/config/config";
 import { getContinueOnboardingCta } from "../../services/onboarding/flow";
+import { useAuthSession } from "../../auth/AuthSessionProvider";
 
 /* ─── Types ─── */
 export interface OnboardingStatus {
@@ -36,7 +37,7 @@ export interface HomeLogic {
 /* ─── Main Hook ─── */
 export const useHomeLogic = (): HomeLogic => {
   const navigate = useNavigate();
-  const [session, setSession] = useState<Session | null>(null);
+  const { session } = useAuthSession();
 
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus>({
     hasProfile: false,
@@ -44,23 +45,6 @@ export const useHomeLogic = (): HomeLogic => {
     currentStep: 1,
     loading: true,
   });
-
-  /* Auth session listener */
-  useEffect(() => {
-    if (!config.supabaseClient) return;
-
-    config.supabaseClient.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-
-    const {
-      data: { subscription },
-    } = config.supabaseClient.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription?.unsubscribe();
-  }, []);
 
   /* Check onboarding status when logged in */
   useEffect(() => {

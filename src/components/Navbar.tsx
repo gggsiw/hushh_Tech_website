@@ -2,12 +2,13 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { FiMenu, FiX, FiChevronDown, FiUser, FiTrash2, FiChevronDown as FiArrowDown } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
-import config from "../resources/config/config";
 import { Image, useToast, useBreakpointValue, useDisclosure } from "@chakra-ui/react";
 import hushhLogo from "../components/images/Hushhogo.png";
 import LanguageSwitcher from "./LanguageSwitcher";
 import DeleteAccountModal from "./DeleteAccountModal";
 import { useStockQuotes, StockQuote, STOCK_LOGOS } from "../hooks/useStockQuotes";
+import config from "../resources/config/config";
+import { useAuthSession } from "../auth/AuthSessionProvider";
 
 const WELCOME_TOAST_PENDING_KEY = "showWelcomeToast";
 const WELCOME_TOAST_USER_KEY = "showWelcomeToastUserId";
@@ -47,7 +48,6 @@ const TickerChip = ({ quote, isLoading }: { quote: StockQuote; isLoading?: boole
 export default function Navbar() {
   const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const [session, setSession] = useState<any>(null);
   const [toastShown, setToastShown] = useState(false);
   const previousUserIdRef = useRef<string | null>(null);
   const [careerDropdownOpen, setCareerDropdownOpen] = useState(false);
@@ -65,6 +65,7 @@ export default function Navbar() {
   const toast = useToast();
   const isMobile = useBreakpointValue({ base: true, lg: false });
   const isDesktop = isMobile === false;
+  const { session, user, status, signOut } = useAuthSession();
 
   // Hide ticker strip on onboarding & profile pages to keep UX clean
   const isOnboarding = location.pathname.startsWith('/onboarding');
@@ -78,54 +79,15 @@ export default function Navbar() {
   const displayQuotes = quotes;
 
   useEffect(() => {
-    if (!config.supabaseClient) return;
-
-    const syncSessionIfUserChanged = (nextSession: any) => {
-      setSession((currentSession: any) => {
-        const currentUserId = currentSession?.user?.id ?? null;
-        const nextUserId = nextSession?.user?.id ?? null;
-        const currentAccessToken = currentSession?.access_token ?? null;
-        const nextAccessToken = nextSession?.access_token ?? null;
-        const isSameSession = currentUserId === nextUserId && currentAccessToken === nextAccessToken;
-        return isSameSession ? currentSession : nextSession;
-      });
-    };
-    
-    // Fetch the current session
-    config.supabaseClient.auth.getSession().then(({ data: { session } }) => {
-      syncSessionIfUserChanged(session);
-    });
-
-    // Listen for auth state changes
-    const { data: { subscription } } = config.supabaseClient.auth.onAuthStateChange((_event, nextSession) => {
-      syncSessionIfUserChanged(nextSession);
-    });
-    
-    const cleanup = () => subscription?.unsubscribe();
-    return cleanup;
-  }, []);
-
-  useEffect(() => {
-    const currentUserId = session?.user?.id ?? null;
+    const currentUserId = user?.id ?? null;
     if (previousUserIdRef.current !== currentUserId) {
       setToastShown(false);
       previousUserIdRef.current = currentUserId;
     }
-  }, [session?.user?.id]);
+  }, [user?.id]);
 
   const handleLogout = async () => {
-    if (!config.supabaseClient) return;
-    
-    try {
-      await config.supabaseClient.auth.signOut();
-      setSession(null);
-    } catch (error) {
-      console.error("Error logging out of Supabase:", error);
-    }
-
-    localStorage.removeItem("isLoggedIn");
-    sessionStorage.removeItem(WELCOME_TOAST_PENDING_KEY);
-    sessionStorage.removeItem(WELCOME_TOAST_USER_KEY);
+    await signOut();
   };
 
   // Show welcome toast when a user is signed in (only once)
@@ -143,7 +105,7 @@ export default function Navbar() {
 
     const shouldShowWelcomeToast = sessionStorage.getItem(WELCOME_TOAST_PENDING_KEY) === "true";
     const pendingToastUserId = sessionStorage.getItem(WELCOME_TOAST_USER_KEY);
-    const currentUserId = session?.user?.id ?? null;
+    const currentUserId = user?.id ?? null;
     const isPendingForCurrentUser = shouldShowWelcomeToast && (!pendingToastUserId || pendingToastUserId === currentUserId);
 
     if (!isPendingForCurrentUser) {
@@ -161,25 +123,25 @@ export default function Navbar() {
     sessionStorage.removeItem(WELCOME_TOAST_PENDING_KEY);
     sessionStorage.removeItem(WELCOME_TOAST_USER_KEY);
     setToastShown(true);
-  }, [session, toastShown, toast, t]);
+  }, [session, toastShown, toast, t, user?.id]);
 
   // Fetch Hushh Coins balance when authenticated
   useEffect(() => {
-    if (!session?.user?.id || !config.supabaseClient) { setHushhCoins(null); return; }
+    if (!user?.id || !config.supabaseClient) { setHushhCoins(null); return; }
     const fetchCoins = async () => {
       try {
         const { data } = await config.supabaseClient!
           .from('ceo_meeting_payments')
           .select('hushh_coins_awarded')
-          .eq('user_id', session.user.id)
+          .eq('user_id', user.id)
           .maybeSingle();
         setHushhCoins(data?.hushh_coins_awarded ?? 0);
       } catch { setHushhCoins(0); }
     };
     fetchCoins();
-  }, [session?.user?.id]);
+  }, [user?.id]);
 
-  const isAuthenticated = !!session;
+  const isAuthenticated = status === "authenticated";
 
   const primaryNavLinks = [
     { path: "/", label: t('nav.home') },
@@ -219,7 +181,6 @@ export default function Navbar() {
 
   const handleAccountDeleted = () => {
     // Reset states immediately for proper UI update
-    setSession(null);
     setToastShown(true); // Prevent welcome toast from showing
     setIsOpen(false); // Close sidebar drawer immediately
     onDeleteModalClose();
