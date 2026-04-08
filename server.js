@@ -28,7 +28,7 @@ const DIST_DIR = join(__dirname, 'dist');
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Global security headers (mirrors vercel.json)
+// Global security headers for Cloud Run. This file is the authoritative runtime config.
 app.use((_req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
@@ -42,8 +42,8 @@ app.use((_req, res, next) => {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.plaid.com",
       "font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com data:",
       "img-src 'self' data: blob: https: http:",
-      "connect-src 'self' https://*.plaid.com https://*.supabase.co wss://*.supabase.co https://www.google.com https://www.gstatic.com https://www.google-analytics.com https://www.googletagmanager.com https://api.emailjs.com https://generativelanguage.googleapis.com https://*.googleapis.com https://www.walletlink.org wss://www.walletlink.org wss://mainnet.infura.io wss://*.infura.io https://*.seondnsresolve.com https://www.recaptcha.net",
-      "frame-src 'self' https://cdn.plaid.com https://*.plaid.com https://www.google.com https://www.gstatic.com https://calendly.com",
+      "connect-src 'self' https://*.plaid.com https://*.supabase.co wss://*.supabase.co https://www.google.com https://www.gstatic.com https://www.google-analytics.com https://www.googletagmanager.com https://api.emailjs.com https://generativelanguage.googleapis.com https://*.googleapis.com https://www.walletlink.org wss://www.walletlink.org wss://mainnet.infura.io wss://*.infura.io https://*.seondnsresolve.com https://www.recaptcha.net https://hushhtech-nda-generation-53407187172.us-central1.run.app",
+      "frame-src 'self' https://cdn.plaid.com https://*.plaid.com https://www.google.com https://www.gstatic.com https://calendly.com https://www.recaptcha.net",
       "media-src 'self' blob: data:",
       "worker-src 'self' blob:",
       "child-src 'self' blob: https://cdn.plaid.com https://*.plaid.com",

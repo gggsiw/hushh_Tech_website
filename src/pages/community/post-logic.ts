@@ -6,10 +6,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useToast } from "@chakra-ui/react";
-import axios from "axios";
 import { getPostBySlug, PostData } from "../../data/posts";
-import config from "../../resources/config/config";
 import { useAuthSession } from "../../auth/AuthSessionProvider";
+import { checkAccessStatus } from "../../services/access/accessControlApi";
 
 export const useCommunityPostLogic = () => {
   const { "*": slug } = useParams();
@@ -66,19 +65,9 @@ export const useCommunityPostLogic = () => {
         }
 
         try {
-          const response = await axios.post(
-            "https://gsqmwxqgqrgzhlhmbscg.supabase.co/rest/v1/rpc/check_access_status",
-            {},
-            {
-              headers: {
-                apikey: config.SUPABASE_ANON_KEY,
-                Authorization: `Bearer ${session.access_token}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
+          const response = await checkAccessStatus(session.access_token);
 
-          if (response.data !== "Approved") {
+          if (response !== "Approved") {
             showToastOnce("access-restricted-nda", {
               title: "Access Restricted",
               description:

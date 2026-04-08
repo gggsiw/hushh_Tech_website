@@ -5,10 +5,10 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import config from '../../resources/config/config';
 import { getContinueOnboardingCta } from '../../services/onboarding/flow';
 import { useAuthSession } from '../../auth/AuthSessionProvider';
+import { checkAccessStatus } from '../../services/access/accessControlApi';
 
 export function useProfileLogic() {
   const navigate = useNavigate();
@@ -73,17 +73,7 @@ export function useProfileLogic() {
 
     const checkNda = async () => {
       try {
-        const { data } = await axios.post(
-          'https://gsqmwxqgqrgzhlhmbscg.supabase.co/rest/v1/rpc/check_access_status',
-          {},
-          {
-            headers: {
-              apikey: config.SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${session.access_token}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
+        const data = await checkAccessStatus(session.access_token);
         if (data === 'Approved') setNdaApproved(true);
       } catch (err: any) {
         /* 401 = expired/invalid token — silently ignore, don't retry */

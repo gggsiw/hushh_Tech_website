@@ -7,6 +7,7 @@ env:
   SMOKE_BASE_URL: https://hushhtech.com
   SHARED_SECRETS_PROJECT: "53407187172"
   VITE_SUPABASE_REDIRECT_URL: https://hushhtech.com/auth/callback
+  VITE_PLAID_REDIRECT_URI: https://hushhtech.com/onboarding/financial-link
 
 jobs:
   deploy:
@@ -47,7 +48,7 @@ jobs:
         shell: bash
         run: |
           missing=0
-          for name in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY VITE_SUPABASE_REDIRECT_URL; do
+          for name in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY VITE_SUPABASE_REDIRECT_URL VITE_PLAID_REDIRECT_URI; do
             if [ -z "${!name}" ]; then
               echo "::error::$name is required for the web auth build"
               missing=1

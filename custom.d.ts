@@ -33,6 +33,8 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL: string;
   readonly VITE_SUPABASE_ANON_KEY: string;
   readonly VITE_SUPABASE_REDIRECT_URL?: string;
+  readonly VITE_PLAID_REDIRECT_URI?: string;
+  readonly VITE_NDA_GENERATION_URL?: string;
   readonly VITE_GUEST_MODE_ACCESS_TOKEN?: string;
   readonly VITE_MARKET_SUPABASE_URL?: string;
   readonly VITE_MARKET_SUPABASE_KEY?: string;

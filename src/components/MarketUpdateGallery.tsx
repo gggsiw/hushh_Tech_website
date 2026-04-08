@@ -17,6 +17,7 @@ import {
   Flex
 } from '@chakra-ui/react';
 import { CloseIcon } from '@chakra-ui/icons';
+import { getSupabaseStoragePublicUrl } from '../services/runtime/mainWeb';
 
 interface MarketUpdateGalleryProps {
   date: string; // Format: 'dmu14mar' or 'DD/MM/YYYY'
@@ -40,7 +41,7 @@ const MarketUpdateGallery: React.FC<MarketUpdateGalleryProps> = ({
   const { isOpen, onOpen, onClose } = useDisclosure();
   
   // Define the base URL for Supabase storage
-  const baseUrl = 'https://gsqmwxqgqrgzhlhmbscg.supabase.co/storage/v1/object/public/website';
+  const baseUrl = getSupabaseStoragePublicUrl('website');
   
   // Format the folder path based on date format
   const formatFolderPath = (dateStr: string, isApiFormat: boolean): string => {

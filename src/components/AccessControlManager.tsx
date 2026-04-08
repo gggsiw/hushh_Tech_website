@@ -1,10 +1,13 @@
 // AccessControlManager.tsx
 import { useEffect, useState } from "react";
 import { Spinner, Box, useToast } from "@chakra-ui/react";
-import axios from "axios";
-import config from "../resources/config/config";
 import NDARequestModal from "./NDARequestModal";
 import NDADocumentModal from "./NDADocumentModal";
+import {
+  acceptNda,
+  checkAccessStatus,
+  getNdaMetadata,
+} from "../services/access/accessControlApi";
 
 // Placeholder for the community page component
 const CommunityPage: React.FC = () => {
@@ -28,56 +31,27 @@ const AccessControlManager: React.FC<AccessControlManagerProps> = ({ session }) 
   const [loading, setLoading] = useState(false);
   const toast = useToast();
 
-  // API endpoint URLs
-  const CHECK_ACCESS_URL =
-    "https://gsqmwxqgqrgzhlhmbscg.supabase.co/rest/v1/rpc/check_access_status";
-  const GET_NDA_METADATA_URL =
-    "https://hushhtech-nda-generation-53407187172.us-central1.run.app/generate-nda";
-  const ACCEPT_NDA_URL =
-    "https://gsqmwxqgqrgzhlhmbscg.supabase.co/rest/v1/rpc/accept_nda_v2";
-
   // Check the current access status on component mount
   useEffect(() => {
-    const checkAccessStatus = async () => {
+    const loadAccessStatus = async () => {
       setLoading(true);
       try {
-        const response = await axios.post(
-          CHECK_ACCESS_URL,
-          {},
-          {
-            headers: {
-              apikey: config.SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${session.access_token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        const res = response.data;
+        const res = await checkAccessStatus(session.access_token);
         console.log("Access Status:", res);
         setAccessStatus(res);
 
         if (res === "Not Applied") {
           setIsRequestModalOpen(true);
         } else if (res === "Pending: Waiting for NDA Process") {
-          // Fetch the NDA metadata
-          const ndaResponse = await axios.post(
-            "https://hushhtech-nda-generation-53407187172.us-central1.run.app/generate-nda",
-            {},
-            {
-            headers: {
-                apikey: config.SUPABASE_ANON_KEY,
-                Authorization: `Bearer ${session.access_token}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
-          if (ndaResponse.data.status === "success") {
-            setNdaMetadata(ndaResponse.data.metadata);
+          const ndaResponse = await getNdaMetadata(session.access_token);
+          if (ndaResponse.status === "success") {
+            setNdaMetadata(ndaResponse.metadata);
             setIsNdaModalOpen(true);
           } else {
             toast({
               title: "Error",
-              description: ndaResponse.data.message || "Error fetching NDA metadata.",
+              description:
+                ndaResponse.message || "Error fetching NDA metadata.",
               status: "error",
               duration: 4000,
               isClosable: true,
@@ -113,7 +87,7 @@ const AccessControlManager: React.FC<AccessControlManagerProps> = ({ session }) 
       setLoading(false);
     };
 
-    checkAccessStatus();
+    loadAccessStatus();
   }, [session, toast]);
 
   // Called when the user submits the request access form.
@@ -122,24 +96,15 @@ const AccessControlManager: React.FC<AccessControlManagerProps> = ({ session }) 
     // If the response requires NDA processing, fetch and show NDA modal.
     if (result === "Pending: Waiting for NDA Process") {
       try {
-        const ndaResponse = await axios.post(
-          "https://hushhtech-nda-generation-53407187172.us-central1.run.app/generate-nda",
-          {},
-          {
-            headers: {
-              apikey: config.SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${session.access_token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        if (ndaResponse.data.status === "success") {
-          setNdaMetadata(ndaResponse.data.metadata);
+        const ndaResponse = await getNdaMetadata(session.access_token);
+        if (ndaResponse.status === "success") {
+          setNdaMetadata(ndaResponse.metadata);
           setIsNdaModalOpen(true);
         } else {
           toast({
             title: "Error",
-            description: ndaResponse.data.message || "Error fetching NDA metadata.",
+            description:
+              ndaResponse.message || "Error fetching NDA metadata.",
             status: "error",
             duration: 4000,
             isClosable: true,
@@ -161,19 +126,9 @@ const AccessControlManager: React.FC<AccessControlManagerProps> = ({ session }) 
   // Called when the user accepts the NDA in the NDA modal.
   const handleNdaAccept = async () => {
     try {
-      const response = await axios.post(
-        ACCEPT_NDA_URL,
-        {},
-        {
-          headers: {
-            apikey: config.SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      console.log("Accept NDA Response:", response.data);
-      if (response.data === "Approved") {
+      const response = await acceptNda(session.access_token);
+      console.log("Accept NDA Response:", response);
+      if (response === "Approved") {
         toast({
           title: "NDA Accepted",
           description: "Your NDA has been accepted. Welcome to the community!",

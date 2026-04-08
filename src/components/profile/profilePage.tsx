@@ -15,8 +15,11 @@ import { keyframes } from "@emotion/react";
 import HushhLogo from "../images/Hushhogo.png";
 import NDARequestModal from "../NDARequestModal";
 import NDADocumentModal from "../NDADocumentModal";
-import axios from "axios";
 import config from "../../resources/config/config";
+import {
+  checkAccessStatus,
+  getNdaMetadata,
+} from "../../services/access/accessControlApi";
 import { useNavigate } from "react-router-dom";
 import { getContinueOnboardingCta } from "../../services/onboarding/flow";
 
@@ -170,19 +173,7 @@ const ProfilePage: React.FC = () => {
   const checkNdaStatus = useCallback(async () => {
     if (!session) return;
     try {
-      const response = await axios.post(
-        "https://gsqmwxqgqrgzhlhmbscg.supabase.co/rest/v1/rpc/check_access_status",
-        {},
-        {
-          headers: {
-            apikey: config.SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      
-      const newStatus = response.data;
+      const newStatus = await checkAccessStatus(session.access_token);
       setNdaStatus(newStatus);
       
       if (newStatus === "Approved") {
@@ -215,20 +206,10 @@ const ProfilePage: React.FC = () => {
     
     setIsMetadataLoading(true);
     try {
-      const ndaResponse = await axios.post(
-        "https://gsqmwxqgqrgzhlhmbscg.supabase.co/rest/v1/rpc/get_nda_metadata",
-        {},
-        {
-          headers: {
-            apikey: config.SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      
-      if (ndaResponse.data.status === "success") {
-        const metadata = ndaResponse.data.metadata;
+      const ndaResponse = await getNdaMetadata(session.access_token);
+
+      if (ndaResponse.status === "success") {
+        const metadata = ndaResponse.metadata;
         setNdaMetadata(metadata);
         
         if (metadata && Object.keys(metadata).length > 0) {

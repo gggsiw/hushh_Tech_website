@@ -6,6 +6,8 @@ export interface ClientEnvConfig {
   VITE_SUPABASE_URL?: string;
   VITE_SUPABASE_ANON_KEY?: string;
   VITE_SUPABASE_REDIRECT_URL?: string;
+  VITE_PLAID_REDIRECT_URI?: string;
+  VITE_NDA_GENERATION_URL?: string;
 }
 
 interface Config {

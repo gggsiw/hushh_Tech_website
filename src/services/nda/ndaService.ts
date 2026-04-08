@@ -4,9 +4,10 @@
  */
 
 import config from '../../resources/config/config';
+import { getNdaGenerationUrl } from '../runtime/mainWeb';
 
 // Supabase function URL for NDA notification
-const NDA_NOTIFICATION_FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/nda-signed-notification`;
+const NDA_NOTIFICATION_FUNCTION_URL = `${config.SUPABASE_URL}/functions/v1/nda-signed-notification`;
 
 export interface NDAStatus {
   hasSignedNda: boolean;
@@ -80,15 +81,8 @@ export const signNDA = async (
       };
     }
     
-    // Get client IP for audit trail (best effort)
-    let signerIp = 'unknown';
-    try {
-      const ipResponse = await fetch('https://api.ipify.org?format=json');
-      const ipData = await ipResponse.json();
-      signerIp = ipData.ip;
-    } catch (ipErr) {
-      console.warn('Could not fetch client IP:', ipErr);
-    }
+    // Avoid browser-side IP discovery so NDA signing does not depend on extra CSP hosts.
+    const signerIp = 'unknown';
     
     const { data, error } = await config.supabaseClient
       .rpc('sign_global_nda', {
@@ -125,7 +119,7 @@ export const generateNDAPdf = async (
 ): Promise<{ success: boolean; pdfUrl?: string; blob?: Blob; error?: string }> => {
   try {
     const response = await fetch(
-      'https://hushhtech-nda-generation-53407187172.us-central1.run.app/generate-nda',
+      getNdaGenerationUrl(),
       {
         method: 'POST',
         headers: {
@@ -217,7 +211,7 @@ export const sendNDANotification = async (
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Authorization': `Bearer ${config.SUPABASE_ANON_KEY}`,
       },
       body: JSON.stringify(payload),
     });

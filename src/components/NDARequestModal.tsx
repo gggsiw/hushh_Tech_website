@@ -20,12 +20,10 @@ import {
   Checkbox,
   Textarea,
 } from "@chakra-ui/react";
-import axios from "axios";
-import config from "../resources/config/config";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
-import NDADocumentModal from "./NDADocumentModal";
+import { requestFileAccess } from "../services/access/accessControlApi";
 
 interface NDARequestModalProps {
   session: any; // Contains the logged-in user's session (including access_token)
@@ -167,23 +165,12 @@ const InvestorProfilePage: React.FC<NDARequestModalProps> = ({
       );
     }
     try {
-      const response = await axios.post(
-        "https://gsqmwxqgqrgzhlhmbscg.supabase.co/rest/v1/rpc/request_file_access",
-        {
-          investor_type: investorType,
-          metadata: JSON.stringify(formattedMetadata),
-        },
-        {
-          headers: {
-            apikey: config.SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const resData = await requestFileAccess(session.access_token, {
+        investorType,
+        metadata: JSON.stringify(formattedMetadata),
+      });
 
-      console.log("Request Access Response:", response.data);
-      const resData = response.data;
+      console.log("Request Access Response:", resData);
       
       // Toast messages based on response (existing logic)
       if (resData === "Approved" || (typeof resData === "string" && resData.startsWith("Requested permission"))) {

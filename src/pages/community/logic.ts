@@ -11,6 +11,10 @@ import config from "../../resources/config/config";
 import { getPosts, PostData } from "../../data/posts";
 import { formatShortDate, parseDate } from "../../utils/dateFormatter";
 import { useAuthSession } from "../../auth/AuthSessionProvider";
+import {
+  checkAccessStatus,
+  getNdaMetadata,
+} from "../../services/access/accessControlApi";
 
 /* ── Constants ── */
 export const NDA_OPTION = "Sensitive Documents (NDA approval Req.)";
@@ -260,33 +264,13 @@ export const useCommunityListLogic = () => {
     }
     setNdaLoading(true);
     try {
-      const { data: status } = await axios.post(
-        "https://gsqmwxqgqrgzhlhmbscg.supabase.co/rest/v1/rpc/check_access_status",
-        {},
-        {
-          headers: {
-            apikey: config.SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const status = await checkAccessStatus(session.access_token);
       if (status === "Approved") {
         setNdaApproved(true);
         return true;
       }
       if (status === "Pending: Waiting for NDA Process") {
-        const { data: meta } = await axios.post(
-          "https://gsqmwxqgqrgzhlhmbscg.supabase.co/rest/v1/rpc/get_nda_metadata",
-          {},
-          {
-            headers: {
-              apikey: config.SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${session.access_token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
+        const meta = await getNdaMetadata(session.access_token);
         setNdaMetadata(meta.metadata);
         setShowNdaDocModal(true);
         return false;

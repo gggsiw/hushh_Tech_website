@@ -8,6 +8,9 @@ if (!baseUrl) {
 }
 
 const loginUrl = new URL("/login", baseUrl).toString();
+const profileUrl = new URL("/profile", baseUrl).toString();
+const financialLinkUrl = new URL("/onboarding/financial-link", baseUrl).toString();
+const ndaPostUrl = new URL("/community/funds/fund-performance", baseUrl).toString();
 
 async function verifyProviderRedirect(buttonName, expectedHosts) {
   const browser = await chromium.launch({ headless: true });
@@ -32,6 +35,34 @@ async function verifyProviderRedirect(buttonName, expectedHosts) {
   }
 }
 
+async function verifyRedirect(startUrl, expectedPathname, expectedRedirect) {
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1400 } });
+
+  try {
+    await page.goto(startUrl, { waitUntil: "networkidle", timeout: 30000 });
+    await page.waitForURL(
+      (value) => {
+        const current = new URL(value.toString());
+        if (current.pathname !== expectedPathname) {
+          return false;
+        }
+
+        if (!expectedRedirect) {
+          return true;
+        }
+
+        return current.searchParams.get("redirect") === expectedRedirect;
+      },
+      { timeout: 15000 }
+    );
+
+    return page.url();
+  } finally {
+    await browser.close();
+  }
+}
+
 const results = {
   loginUrl,
   apple: await verifyProviderRedirect("Continue with Apple", [
@@ -43,6 +74,13 @@ const results = {
     "google.com",
     "accounts.google.com",
   ]),
+  guestProfileRedirect: await verifyRedirect(profileUrl, "/login", "/profile"),
+  guestFinancialLinkRedirect: await verifyRedirect(
+    financialLinkUrl,
+    "/login",
+    "/onboarding/financial-link"
+  ),
+  guestNdaPostRedirect: await verifyRedirect(ndaPostUrl, "/community"),
 };
 
 console.log(JSON.stringify(results, null, 2));

@@ -14,8 +14,7 @@ import {
   Checkbox,
   Text,
 } from "@chakra-ui/react";
-import axios from "axios";
-import config from "../resources/config/config";
+import { acceptNda, generateNdaPdfBlob } from "../services/access/accessControlApi";
 
 interface NDADocumentModalProps {
   isOpen: boolean;
@@ -60,23 +59,16 @@ const NDADocumentModal: React.FC<NDADocumentModalProps> = ({
     try {
       console.log("Generating NDA PDF with metadata:", ndaMetadata);
       
-      const response = await axios.post(
-        "https://hushhtech-nda-generation-53407187172.us-central1.run.app/generate-nda",
-        { metadata: ndaMetadata },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "jwt-token": session.access_token,
-          },
-          responseType: "blob",
-        }
+      const responseBlob = await generateNdaPdfBlob(
+        session.access_token,
+        ndaMetadata
       );
       
       // Close the loading toast
       toast.close(loadingToastId);
       
       // Create a Blob URL from the response data
-      const blob = new Blob([response.data], { type: "application/pdf" });
+      const blob = new Blob([responseBlob], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       setPdfUrl(url);
       
@@ -172,18 +164,7 @@ const NDADocumentModal: React.FC<NDADocumentModalProps> = ({
     if (isSubmitting) return; // Prevent multiple clicks
     setIsSubmitting(true);
     try {
-      const response = await axios.post(
-        "https://gsqmwxqgqrgzhlhmbscg.supabase.co/rest/v1/rpc/accept_nda_v2",
-        {},
-        {
-          headers: {
-            apikey: config.SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      const resData = response.data;
+      const resData = await acceptNda(session.access_token);
       console.log("Accept NDA Response:", resData);
       if (resData === "Approved" || resData === "Already Approved") {
         toast({

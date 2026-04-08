@@ -16,8 +16,7 @@ import {
   useToast,
   VStack,
 } from "@chakra-ui/react";
-import axios from "axios";
-import config from "../resources/config/config";
+import { requestFileAccess } from "../services/access/accessControlApi";
 
 interface NDARequestModalProps {
   isOpen: boolean;
@@ -43,23 +42,12 @@ const NDARequestModal: React.FC<NDARequestModalProps> = ({
 
   const handleSubmit = async () => {
     try {
-      const response = await axios.post(
-        "https://gsqmwxqgqrgzhlhmbscg.supabase.co/rest/v1/rpc/request_file_access",
-        {
-          investor_type: investorType,
-          metadata: JSON.stringify(metadata),
-        },
-        {
-          headers: {
-            apikey: config.SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const resData = await requestFileAccess(session.access_token, {
+        investorType,
+        metadata: JSON.stringify(metadata),
+      });
 
-      console.log("Request Access Response:", response.data);
-      const resData = response.data;
+      console.log("Request Access Response:", resData);
 
       // Let the parent component decide what to do
       onSubmit(resData);
