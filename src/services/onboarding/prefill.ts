@@ -1,4 +1,5 @@
 import { COUNTRY_CODE_TO_NAME, COUNTRY_NAME_TO_CODE, type LocationData } from '../location';
+import { normalizeDetectedAddress } from '../location/addressNormalization.js';
 
 export interface OnboardingPrefillValues {
   citizenship_country: string;
@@ -196,15 +197,30 @@ const extractLocationPrefill = (locationData: Partial<LocationData> | null | und
   if (!locationData) return {};
 
   const country = toCountryName(locationData.countryCode || locationData.country);
-  const formattedAddress = toCleanString(locationData.formattedAddress);
-  const line1 = formattedAddress ? formattedAddress.split(',')[0]?.trim() || '' : '';
+  const normalizedAddress = normalizeDetectedAddress(
+    {
+      country: toCleanString(locationData.country),
+      countryCode: toCleanString(locationData.countryCode),
+      state: toCleanString(locationData.state),
+      stateCode: toCleanString(locationData.stateCode),
+      city: toCleanString(locationData.city),
+      postalCode: toCleanString(locationData.postalCode),
+      phoneDialCode: toCleanString(locationData.phoneDialCode),
+      timezone: toCleanString(locationData.timezone),
+      formattedAddress: toCleanString(locationData.formattedAddress),
+      latitude: Number(locationData.latitude || 0),
+      longitude: Number(locationData.longitude || 0),
+    },
+    country
+  );
 
   return {
     phone_country_code: toDialCode(locationData.phoneDialCode),
-    address_line_1: line1,
-    city: toCleanString(locationData.city),
-    state: toCleanString(locationData.stateCode || locationData.state),
-    zip_code: toCleanString(locationData.postalCode),
+    address_line_1: normalizedAddress.addressLine1,
+    address_line_2: normalizedAddress.addressLine2,
+    city: normalizedAddress.city,
+    state: normalizedAddress.state,
+    zip_code: normalizedAddress.zipCode,
     address_country: country,
   };
 };

@@ -360,7 +360,7 @@ export default function OnboardingStep3Combined() {
                     id="addressLine2"
                     type="text"
                     value={s.addressLine2}
-                    onChange={(e) => s.setAddressLine2(e.target.value)}
+                    onChange={(e) => s.handleAddressLine2Change(e.target.value)}
                     placeholder="Apt, suite, bldg (optional)"
                     className="w-full text-sm text-gray-700 font-medium bg-transparent border-none outline-none p-0 placeholder-gray-400 focus:ring-0"
                     autoComplete="address-line2"

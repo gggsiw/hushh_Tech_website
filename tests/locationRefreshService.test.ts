@@ -67,6 +67,36 @@ describe('LocationService shared refresh flow', () => {
     expect(fromMock).not.toHaveBeenCalled();
   });
 
+  it('hydrates cached location from normalized gps_* columns when the legacy blob is absent', async () => {
+    const service = new LocationService();
+    vi.spyOn(service, 'readSharedLocationCache').mockResolvedValue(null);
+    vi.spyOn(service, 'writeSharedLocationCache').mockResolvedValue();
+    maybeSingleMock.mockResolvedValueOnce({
+      data: {
+        gps_latitude: 18.5943,
+        gps_longitude: 73.7537,
+        gps_city: 'Pune',
+        gps_state: 'Maharashtra',
+        gps_country: 'India',
+        gps_zip_code: '411045',
+        gps_full_address: '1, Tower-3, Godrej Hillside, Mahalunge, Pune, Maharashtra 411045, India',
+        gps_detected_at: '2026-04-08T08:00:00.000Z',
+      },
+      error: null,
+    });
+
+    const result = await service.getCachedLocation('user-456');
+
+    expect(result).toMatchObject({
+      city: 'Pune',
+      state: 'Maharashtra',
+      country: 'India',
+      postalCode: '411045',
+      phoneDialCode: '+91',
+      formattedAddress: '1, Tower-3, Godrej Hillside, Mahalunge, Pune, Maharashtra 411045, India',
+    });
+  });
+
   it('refreshes timestamps without flagging a location change when the signature is unchanged', async () => {
     const service = new LocationService();
     const samePlace = {

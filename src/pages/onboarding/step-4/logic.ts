@@ -22,6 +22,17 @@ export interface DialCodeOption {
   iso: string;
 }
 
+export const resolveStep4CachedDialCode = ({
+  savedPhoneCode,
+  cachedLocation,
+}: {
+  savedPhoneCode?: string | null;
+  cachedLocation?: { phoneDialCode?: string | null; countryCode?: string | null } | null;
+}) => ({
+  dialCode: savedPhoneCode ? String(savedPhoneCode) : cachedLocation?.phoneDialCode ? String(cachedLocation.phoneDialCode) : '',
+  countryIso: cachedLocation?.countryCode ? String(cachedLocation.countryCode).toUpperCase() : '',
+});
+
 export const PHONE_DIAL_CODES: DialCodeOption[] = [
   { code: '+1', country: 'United States', iso: 'US' },
   { code: '+44', country: 'United Kingdom', iso: 'GB' },
@@ -191,19 +202,20 @@ export function useStep5Logic() {
       /* Only run dial code detection if Plaid didn't already set it */
       if (!plaidSetDialCode) {
         const sharedLocationRecord = await locationService.readSharedLocationCache(user.id);
-        const sharedLocation = sharedLocationRecord?.data || null;
+        const cachedLocation = sharedLocationRecord?.data || await locationService.getCachedLocation(user.id);
         const savedPhoneCode = onboardingData?.phone_country_code ? String(onboardingData.phone_country_code) : '';
-        const cachedDial =
-          savedPhoneCode ||
-          (sharedLocation?.phoneDialCode ? String(sharedLocation.phoneDialCode) : '') ||
-          (onboardingData?.gps_detected_phone_dial_code ? String(onboardingData.gps_detected_phone_dial_code) : '') ||
-          ((onboardingData?.gps_location_data as any)?.phoneDialCode ? String((onboardingData.gps_location_data as any).phoneDialCode) : '');
+        const cachedDialState = resolveStep4CachedDialCode({
+          savedPhoneCode,
+          cachedLocation,
+        });
+        const cachedDial = cachedDialState.dialCode;
 
         if (cachedDial) {
           setCountryCode(cachedDial);
-          if (sharedLocation?.countryCode) {
-            const sharedIso = String(sharedLocation.countryCode).toUpperCase();
-            if (PHONE_DIAL_CODES.some((o) => o.iso === sharedIso)) setSelectedDialCountryIso(sharedIso);
+          if (cachedDialState.countryIso) {
+            if (PHONE_DIAL_CODES.some((o) => o.iso === cachedDialState.countryIso)) {
+              setSelectedDialCountryIso(cachedDialState.countryIso);
+            }
           } else {
             const matched = PHONE_DIAL_CODES.find((o) => o.code === cachedDial);
             if (matched) setSelectedDialCountryIso(matched.iso);
@@ -211,7 +223,6 @@ export function useStep5Logic() {
         } else {
           setIsAutoDetectingDialCode(true);
           try {
-            const cachedLocation = await locationService.getCachedLocation(user.id);
             const resolvedLocation = cachedLocation || await locationService.getLocationByIp();
 
             if (resolvedLocation?.phoneDialCode) {

@@ -27,6 +27,7 @@ import {
   COUNTRY_CODE_TO_NAME,
   COUNTRY_NAME_TO_CODE,
 } from './types';
+import { normalizeDetectedAddress } from './addressNormalization.js';
 
 // API Endpoints
 const LOCATIONS_API = `${config.SUPABASE_URL}/functions/v1/get-locations`;
@@ -121,6 +122,10 @@ export class LocationService {
   private getDialCodeForCountry(countryCode: string): string {
     const code = (countryCode || '').toUpperCase();
     return COUNTRY_DIAL_CODES[code] || '+1';
+  }
+
+  getDialCodeForIsoCountry(countryCode: string): string {
+    return this.getDialCodeForCountry(countryCode);
   }
 
   private parseIsoSubdivisionCode(value: unknown): string {
@@ -829,25 +834,22 @@ export class LocationService {
    * Parse formatted address into address lines
    */
   parseFormattedAddress(formattedAddress: string, locationData: LocationData): { line1: string; line2: string } {
-    let streetPart = formattedAddress;
-    if (locationData.country && streetPart.endsWith(locationData.country)) {
-      streetPart = streetPart.slice(0, -locationData.country.length).replace(/,\s*$/, '');
-    }
-    if (locationData.postalCode) {
-      streetPart = streetPart.replace(new RegExp(`\\s*${locationData.postalCode}\\s*,?`), '');
-    }
-    if (locationData.state) {
-      streetPart = streetPart.replace(new RegExp(`,?\\s*${locationData.state}\\s*$`), '');
-    }
-    if (locationData.city) {
-      streetPart = streetPart.replace(new RegExp(`,?\\s*${locationData.city}\\s*$`), '');
-    }
-    streetPart = streetPart.replace(/,\s*$/, '').trim();
-    const parts = streetPart.split(',').map(p => p.trim()).filter(p => p);
+    const normalized = normalizeDetectedAddress(
+      { ...locationData, formattedAddress },
+      COUNTRY_CODE_TO_NAME[locationData.countryCode] || locationData.country
+    );
+
     return {
-      line1: parts[0] || '',
-      line2: parts.slice(1).join(', '),
+      line1: normalized.addressLine1,
+      line2: normalized.addressLine2,
     };
+  }
+
+  normalizeDetectedAddress(locationData: LocationData) {
+    return normalizeDetectedAddress(
+      locationData,
+      COUNTRY_CODE_TO_NAME[locationData.countryCode] || locationData.country
+    );
   }
 }
 

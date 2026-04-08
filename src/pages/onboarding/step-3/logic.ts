@@ -20,6 +20,9 @@ import {
   type LocationCacheRecord,
   type LocationData,
   COUNTRY_CODE_TO_NAME,
+  isClearlyTruncatedAddressLine1,
+  looksLikeAutoFilledCityStateLine2,
+  normalizeDetectedAddress,
 } from '../../../services/location';
 
 /* ═══════════════════════════════════════════════
@@ -57,6 +60,28 @@ export const countries = [
 ];
 
 export type LocationStatus = 'detecting' | 'success' | 'ip-success' | 'denied' | 'failed' | 'manual' | null;
+
+export interface Step3AddressFields {
+  addressLine1: string;
+  addressLine2: string;
+  zipCode: string;
+  city: string;
+  state: string;
+  addressCountry: string;
+}
+
+export interface Step3FormState extends Step3AddressFields {
+  citizenshipCountry: string;
+  residenceCountry: string;
+}
+
+export interface Step3ManualOverrides {
+  citizenshipCountry: boolean;
+  residenceCountry: boolean;
+  addressLine1: boolean;
+  addressLine2: boolean;
+  zipCode: boolean;
+}
 
 /* ═══════════════════════════════════════════════
    ADDRESS VALIDATION
@@ -123,6 +148,121 @@ const checkGeoPermission = async (): Promise<'granted' | 'denied' | 'prompt'> =>
   return 'prompt';
 };
 
+export const resolveDetectedLocationForStep3 = (
+  locationData: LocationData,
+  availableCountries: string[] = countries
+) => {
+  const countryName = COUNTRY_CODE_TO_NAME[locationData.countryCode] || locationData.country;
+  const matchedCountry = availableCountries.includes(countryName) ? countryName : '';
+  const normalizedAddress = normalizeDetectedAddress(locationData, countryName);
+
+  return {
+    matchedCountry,
+    normalizedAddress: {
+      addressLine1: normalizedAddress.addressLine1,
+      addressLine2: normalizedAddress.addressLine2,
+      zipCode: normalizedAddress.zipCode,
+      city: normalizedAddress.city,
+      state: normalizedAddress.state,
+      addressCountry: normalizedAddress.country,
+    } satisfies Step3AddressFields,
+    detectedLocation:
+      locationData.formattedAddress || locationData.city || locationData.state || countryName,
+  };
+};
+
+export const buildStep3AutofillPatch = ({
+  current,
+  manual,
+  locationData,
+  availableCountries = countries,
+}: {
+  current: Step3FormState;
+  manual: Step3ManualOverrides;
+  locationData: LocationData;
+  availableCountries?: string[];
+}): Partial<Step3FormState> => {
+  const { matchedCountry, normalizedAddress } = resolveDetectedLocationForStep3(
+    locationData,
+    availableCountries
+  );
+  const patch: Partial<Step3FormState> = {};
+
+  if (!manual.citizenshipCountry && matchedCountry && current.citizenshipCountry !== matchedCountry) {
+    patch.citizenshipCountry = matchedCountry;
+  }
+
+  if (!manual.residenceCountry && matchedCountry && current.residenceCountry !== matchedCountry) {
+    patch.residenceCountry = matchedCountry;
+  }
+
+  if (
+    !manual.addressLine1 &&
+    normalizedAddress.addressLine1 &&
+    current.addressLine1 !== normalizedAddress.addressLine1
+  ) {
+    patch.addressLine1 = normalizedAddress.addressLine1;
+  }
+
+  if (!manual.addressLine2 && current.addressLine2 !== normalizedAddress.addressLine2) {
+    patch.addressLine2 = normalizedAddress.addressLine2;
+  }
+
+  if (!manual.zipCode && normalizedAddress.zipCode && current.zipCode !== normalizedAddress.zipCode) {
+    patch.zipCode = normalizedAddress.zipCode;
+  }
+
+  if (normalizedAddress.city && current.city !== normalizedAddress.city) {
+    patch.city = normalizedAddress.city;
+  }
+
+  if (normalizedAddress.state && current.state !== normalizedAddress.state) {
+    patch.state = normalizedAddress.state;
+  }
+
+  if (normalizedAddress.addressCountry && current.addressCountry !== normalizedAddress.addressCountry) {
+    patch.addressCountry = normalizedAddress.addressCountry;
+  }
+
+  return patch;
+};
+
+export const buildStep3SavePayload = ({
+  citizenshipCountry,
+  residenceCountry,
+  addressLine1,
+  addressLine2,
+  zipCode,
+  city,
+  state,
+  addressCountry,
+  currentStep = 4,
+}: Step3FormState & { currentStep?: number }): Record<string, unknown> => {
+  const payload: Record<string, unknown> = {
+    citizenship_country: citizenshipCountry,
+    residence_country: residenceCountry,
+    current_step: currentStep,
+  };
+
+  const hasAddressContext = Boolean(
+    addressLine1.trim() ||
+    addressLine2.trim() ||
+    zipCode.trim() ||
+    city.trim() ||
+    state.trim() ||
+    addressCountry.trim()
+  );
+
+  if (addressLine1.trim()) payload.address_line_1 = addressLine1.trim();
+  if (zipCode.trim()) payload.zip_code = zipCode.trim();
+  if (city.trim()) payload.city = city.trim();
+  if (state.trim()) payload.state = state.trim();
+  if (addressCountry.trim()) payload.address_country = addressCountry.trim();
+  if (hasAddressContext) payload.address_line_2 = addressLine2.trim() || null;
+
+  return payload;
+};
+
 /* ═══════════════════════════════════════════════
    COMBINED HOOK
    ═══════════════════════════════════════════════ */
@@ -133,6 +273,23 @@ export function useCombinedLocationLogic() {
   const autoDetectionStartedRef = useRef(false);
   const citizenshipCountryRef = useRef('');
   const residenceCountryRef = useRef('');
+  const manualOverridesRef = useRef<Step3ManualOverrides>({
+    citizenshipCountry: false,
+    residenceCountry: false,
+    addressLine1: false,
+    addressLine2: false,
+    zipCode: false,
+  });
+  const formStateRef = useRef<Step3FormState>({
+    citizenshipCountry: '',
+    residenceCountry: '',
+    addressLine1: '',
+    addressLine2: '',
+    zipCode: '',
+    city: '',
+    state: '',
+    addressCountry: '',
+  });
 
   // ─── Auth ───
   const [userId, setUserId] = useState<string | null>(null);
@@ -145,6 +302,9 @@ export function useCombinedLocationLogic() {
   const [addressLine1, setAddressLine1] = useState('');
   const [addressLine2, setAddressLine2] = useState('');
   const [zipCode, setZipCode] = useState('');
+  const [addressCity, setAddressCity] = useState('');
+  const [addressState, setAddressState] = useState('');
+  const [addressCountry, setAddressCountry] = useState('');
 
   // ─── Location detection state ───
   const [isLoading, setIsLoading] = useState(false);
@@ -183,41 +343,80 @@ export function useCombinedLocationLogic() {
   // Keep refs in sync
   useEffect(() => { citizenshipCountryRef.current = citizenshipCountry; }, [citizenshipCountry]);
   useEffect(() => { residenceCountryRef.current = residenceCountry; }, [residenceCountry]);
+  useEffect(() => {
+    formStateRef.current = {
+      citizenshipCountry,
+      residenceCountry,
+      addressLine1,
+      addressLine2,
+      zipCode,
+      city: addressCity,
+      state: addressState,
+      addressCountry,
+    };
+  }, [
+    citizenshipCountry,
+    residenceCountry,
+    addressLine1,
+    addressLine2,
+    zipCode,
+    addressCity,
+    addressState,
+    addressCountry,
+  ]);
 
   /* ─── Apply GPS result to fields (country + address + zip) ─── */
   const applyDetectedLocation = (locationData: LocationData, status: LocationStatus) => {
-    // 1. Country name for citizenship/residence
-    const countryName = COUNTRY_CODE_TO_NAME[locationData.countryCode] || locationData.country;
-    const matchedCountry = countries.includes(countryName) ? countryName : '';
-
-    if (!citizenshipCountryRef.current && matchedCountry) {
-      citizenshipCountryRef.current = matchedCountry;
-      setCitizenshipCountry(matchedCountry);
-    }
-    if (!residenceCountryRef.current && matchedCountry) {
-      residenceCountryRef.current = matchedCountry;
-      setResidenceCountry(matchedCountry);
-    }
-
-    setDetectedLocation(
-      locationData.formattedAddress || locationData.city || locationData.state || countryName
+    const { detectedLocation: nextDetectedLocation } = resolveDetectedLocationForStep3(
+      locationData,
+      countries
     );
+    const patch = buildStep3AutofillPatch({
+      current: formStateRef.current,
+      manual: manualOverridesRef.current,
+      locationData,
+      availableCountries: countries,
+    });
+
+    if (patch.citizenshipCountry !== undefined) {
+      citizenshipCountryRef.current = patch.citizenshipCountry;
+      setCitizenshipCountry(patch.citizenshipCountry);
+    }
+
+    if (patch.residenceCountry !== undefined) {
+      residenceCountryRef.current = patch.residenceCountry;
+      setResidenceCountry(patch.residenceCountry);
+    }
+
+    if (patch.addressLine1 !== undefined) {
+      setAddressLine1(patch.addressLine1);
+    }
+
+    if (patch.addressLine2 !== undefined) {
+      setAddressLine2(patch.addressLine2);
+    }
+
+    if (patch.zipCode !== undefined) {
+      setZipCode(patch.zipCode);
+    }
+
+    if (patch.city !== undefined) {
+      setAddressCity(patch.city);
+    }
+
+    if (patch.state !== undefined) {
+      setAddressState(patch.state);
+    }
+
+    if (patch.addressCountry !== undefined) {
+      setAddressCountry(patch.addressCountry);
+    }
+
+    setDetectedLocation(nextDetectedLocation);
     setLocationDetected(true);
     setLocationStatus(status);
 
-    // 2. Auto-fill address + zip from GPS
-    if (locationData.postalCode && !zipCode) {
-      setZipCode(locationData.postalCode);
-    }
-    if (locationData.formattedAddress && !addressLine1) {
-      const parsed = locationService.parseFormattedAddress(locationData.formattedAddress, locationData);
-      if (parsed.line1) setAddressLine1(parsed.line1);
-      // Build Address Line 2 from city + state (e.g. "Pune, Maharashtra")
-      const cityState = [locationData.city, locationData.state].filter(Boolean).join(', ');
-      if (cityState) setAddressLine2(cityState);
-    }
-
-    // 3. Show auto-fill success (GPS stores country/state/city automatically)
+    // Show auto-fill success
     setIsAutoFilling(false);
     setDetectionStatus('Address auto-filled from GPS');
     setTimeout(() => setDetectionStatus(null), 3000);
@@ -272,7 +471,7 @@ export function useCombinedLocationLogic() {
           .from('onboarding_data')
           .select(`
             citizenship_country, residence_country, current_step,
-            address_line_1, address_line_2, zip_code
+            address_line_1, address_line_2, city, state, zip_code, address_country
           `)
           .eq('user_id', user.id)
           .maybeSingle(),
@@ -291,6 +490,16 @@ export function useCombinedLocationLogic() {
 
       const cachedLocation = sharedCache?.data || await locationService.getCachedLocation(user.id);
       const onboardingData = onboardingResult.data || null;
+      const initialFormState: Step3FormState = {
+        citizenshipCountry: '',
+        residenceCountry: '',
+        addressLine1: '',
+        addressLine2: '',
+        zipCode: '',
+        city: '',
+        state: '',
+        addressCountry: '',
+      };
 
       // ─── Prefill citizenship/residence countries ───
       const trustedCountries = getTrustedStep4Countries(onboardingData);
@@ -306,36 +515,76 @@ export function useCombinedLocationLogic() {
         locationData: cachedLocation || undefined,
       });
 
-      // Apply citizenship/residence
-      if (resolved.values.citizenship_country) {
-        citizenshipCountryRef.current = resolved.values.citizenship_country;
-        setCitizenshipCountry(resolved.values.citizenship_country);
-      }
-      if (resolved.values.residence_country) {
-        residenceCountryRef.current = resolved.values.residence_country;
-        setResidenceCountry(resolved.values.residence_country);
+      initialFormState.citizenshipCountry = resolved.values.citizenship_country || '';
+      initialFormState.residenceCountry = resolved.values.residence_country || '';
+      initialFormState.addressLine1 = resolved.values.address_line_1 || '';
+      initialFormState.addressLine2 = resolved.values.address_line_2 || '';
+      initialFormState.zipCode = resolved.values.zip_code || '';
+      initialFormState.city = resolved.values.city || '';
+      initialFormState.state = resolved.values.state || '';
+      initialFormState.addressCountry = resolved.values.address_country || '';
+
+      if (cachedLocation) {
+        const cachedLocationDetails = resolveDetectedLocationForStep3(cachedLocation, countries);
+
+        if (
+          !initialFormState.addressLine1 ||
+          isClearlyTruncatedAddressLine1(
+            initialFormState.addressLine1,
+            cachedLocationDetails.normalizedAddress.addressLine1
+          )
+        ) {
+          initialFormState.addressLine1 = cachedLocationDetails.normalizedAddress.addressLine1;
+        }
+
+        if (
+          !initialFormState.addressLine2 ||
+          looksLikeAutoFilledCityStateLine2(
+            initialFormState.addressLine2,
+            cachedLocationDetails.normalizedAddress.city,
+            cachedLocationDetails.normalizedAddress.state
+          )
+        ) {
+          initialFormState.addressLine2 = cachedLocationDetails.normalizedAddress.addressLine2;
+        }
+
+        if (!initialFormState.zipCode && cachedLocationDetails.normalizedAddress.zipCode) {
+          initialFormState.zipCode = cachedLocationDetails.normalizedAddress.zipCode;
+        }
+
+        if (!initialFormState.city && cachedLocationDetails.normalizedAddress.city) {
+          initialFormState.city = cachedLocationDetails.normalizedAddress.city;
+        }
+
+        if (!initialFormState.state && cachedLocationDetails.normalizedAddress.state) {
+          initialFormState.state = cachedLocationDetails.normalizedAddress.state;
+        }
+
+        if (!initialFormState.addressCountry && cachedLocationDetails.normalizedAddress.addressCountry) {
+          initialFormState.addressCountry = cachedLocationDetails.normalizedAddress.addressCountry;
+        }
+
+        if (!initialFormState.citizenshipCountry && cachedLocationDetails.matchedCountry) {
+          initialFormState.citizenshipCountry = cachedLocationDetails.matchedCountry;
+        }
+
+        if (!initialFormState.residenceCountry && cachedLocationDetails.matchedCountry) {
+          initialFormState.residenceCountry = cachedLocationDetails.matchedCountry;
+        }
       }
 
-      // Apply address fields
-      if (resolved.values.address_line_1) setAddressLine1(resolved.values.address_line_1);
-      if (resolved.values.address_line_2) setAddressLine2(resolved.values.address_line_2);
-      if (resolved.values.zip_code) setZipCode(resolved.values.zip_code);
+      citizenshipCountryRef.current = initialFormState.citizenshipCountry;
+      residenceCountryRef.current = initialFormState.residenceCountry;
+      formStateRef.current = initialFormState;
 
-      // Parse cached GPS formatted address if no saved address
-      if (cachedLocation && !resolved.values.address_line_1) {
-        if (cachedLocation.formattedAddress) {
-          const parsed = locationService.parseFormattedAddress(cachedLocation.formattedAddress, cachedLocation);
-          if (parsed.line1) setAddressLine1(parsed.line1);
-          // Build Address Line 2 from city + state (e.g. "Pune, Maharashtra")
-          if (!resolved.values.address_line_2) {
-            const cityState = [cachedLocation.city, cachedLocation.state].filter(Boolean).join(', ');
-            if (cityState) setAddressLine2(cityState);
-          }
-        }
-        if (cachedLocation.postalCode && !resolved.values.zip_code) {
-          setZipCode(cachedLocation.postalCode);
-        }
-      }
+      if (initialFormState.citizenshipCountry) setCitizenshipCountry(initialFormState.citizenshipCountry);
+      if (initialFormState.residenceCountry) setResidenceCountry(initialFormState.residenceCountry);
+      if (initialFormState.addressLine1) setAddressLine1(initialFormState.addressLine1);
+      if (initialFormState.addressLine2) setAddressLine2(initialFormState.addressLine2);
+      if (initialFormState.zipCode) setZipCode(initialFormState.zipCode);
+      if (initialFormState.city) setAddressCity(initialFormState.city);
+      if (initialFormState.state) setAddressState(initialFormState.state);
+      if (initialFormState.addressCountry) setAddressCountry(initialFormState.addressCountry);
 
       // Fallback: extract country from cached GPS for citizenship/residence
       if (cachedLocation) {
@@ -377,12 +626,14 @@ export function useCombinedLocationLogic() {
 
   /* ─── Country/Residence handlers ─── */
   const handleCitizenshipChange = (value: string) => {
+    manualOverridesRef.current.citizenshipCountry = true;
     citizenshipCountryRef.current = value;
     setCitizenshipCountry(value);
     setLocationStatus('manual');
   };
 
   const handleResidenceChange = (value: string) => {
+    manualOverridesRef.current.residenceCountry = true;
     residenceCountryRef.current = value;
     setResidenceCountry(value);
     setLocationStatus('manual');
@@ -432,12 +683,19 @@ export function useCombinedLocationLogic() {
 
   /* ─── Address field handlers ─── */
   const handleAddressLine1Change = (value: string) => {
+    manualOverridesRef.current.addressLine1 = true;
     setAddressLine1(value);
     if (touched.addressLine1) setErrors((p) => ({ ...p, addressLine1: validateAddress(value) }));
   };
 
+  const handleAddressLine2Change = (value: string) => {
+    manualOverridesRef.current.addressLine2 = true;
+    setAddressLine2(value);
+  };
+
   const handleZipCodeChange = (value: string) => {
     const next = value.slice(0, 10);
+    manualOverridesRef.current.zipCode = true;
     setZipCode(next);
     if (touched.zipCode) setErrors((p) => ({ ...p, zipCode: validateZip(next) }));
   };
@@ -480,16 +738,17 @@ export function useCombinedLocationLogic() {
     setIsLoading(true);
     setError(null);
     try {
-      const payload: Record<string, unknown> = {
-        citizenship_country: citizenshipCountry,
-        residence_country: residenceCountry,
-        current_step: 4,
-      };
-
-      // Include address fields if filled (no country/state/city — GPS handles those)
-      if (addressLine1.trim()) payload.address_line_1 = addressLine1.trim();
-      if (addressLine2.trim()) payload.address_line_2 = addressLine2.trim();
-      if (zipCode.trim()) payload.zip_code = zipCode.trim();
+      const payload = buildStep3SavePayload({
+        citizenshipCountry,
+        residenceCountry,
+        addressLine1,
+        addressLine2,
+        zipCode,
+        city: addressCity,
+        state: addressState,
+        addressCountry,
+        currentStep: 4,
+      } as Step3FormState & { currentStep: number });
 
       await upsertOnboardingData(userId, payload);
       navigate('/onboarding/step-4');
@@ -528,7 +787,7 @@ export function useCombinedLocationLogic() {
     // Address fields
     addressLine1,
     addressLine2,
-    setAddressLine2,
+    handleAddressLine2Change,
     zipCode,
     handleAddressLine1Change,
     handleZipCodeChange,
