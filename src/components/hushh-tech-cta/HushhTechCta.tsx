@@ -9,6 +9,7 @@
  *   </HushhTechCta>
  */
 import React from "react";
+import { Button, type ButtonVariant } from "../ui/button";
 
 /** Enum for CTA button variants */
 export enum HushhTechCtaVariant {
@@ -25,26 +26,14 @@ interface HushhTechCtaProps
 }
 
 /** Tailwind classes for each variant */
-const VARIANT_CLASSES: Record<HushhTechCtaVariant, string> = {
-  [HushhTechCtaVariant.BLACK]: [
-    "bg-black text-white border border-black",
-    "shadow-lg hover:shadow-xl hover:bg-black/90",
-    "active:scale-[0.98] transition-all",
-  ].join(" "),
-
-  [HushhTechCtaVariant.WHITE]: [
-    "bg-white text-black border border-black",
-    "hover:bg-gray-50",
-    "active:scale-[0.98] transition-colors",
-  ].join(" "),
+const CTA_VARIANTS: Record<HushhTechCtaVariant, ButtonVariant> = {
+  [HushhTechCtaVariant.BLACK]: "primary",
+  [HushhTechCtaVariant.WHITE]: "secondary",
 };
 
 /** Base classes shared by both variants */
 const BASE_CLASSES = [
-  "w-full h-14",
-  "font-semibold text-sm tracking-wide",
-  "flex items-center justify-center gap-2",
-  "disabled:opacity-50 disabled:cursor-not-allowed",
+  "w-full",
 ].join(" ");
 
 const HushhTechCta: React.FC<HushhTechCtaProps> = ({
@@ -54,12 +43,14 @@ const HushhTechCta: React.FC<HushhTechCtaProps> = ({
   ...rest
 }) => {
   return (
-    <button
-      className={`${BASE_CLASSES} ${VARIANT_CLASSES[variant]} ${className}`}
+    <Button
+      variant={CTA_VARIANTS[variant]}
+      size="lg"
+      className={`${BASE_CLASSES} ${className}`}
       {...rest}
     >
       {children}
-    </button>
+    </Button>
   );
 };
 
