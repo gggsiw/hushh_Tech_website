@@ -422,6 +422,7 @@ const AIDetectedPreferences: React.FC<AIDetectedPreferencesProps> = ({ userId, o
                                 onClick={() => saveField(fieldName)}
                                 disabled={saving}
                                 className="p-1 text-green-600 hover:bg-green-50 rounded"
+                                aria-label={`Save ${label}`}
                               >
                                 {saving ? (
                                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -432,6 +433,7 @@ const AIDetectedPreferences: React.FC<AIDetectedPreferencesProps> = ({ userId, o
                               <button
                                 onClick={cancelEditing}
                                 className="p-1 text-gray-400 hover:bg-gray-100 rounded"
+                                aria-label={`Cancel editing ${label}`}
                               >
                                 <X className="w-4 h-4" />
                               </button>
@@ -442,6 +444,7 @@ const AIDetectedPreferences: React.FC<AIDetectedPreferencesProps> = ({ userId, o
                               <button
                                 onClick={() => startEditing(fieldName, value)}
                                 className="p-1 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                aria-label={`Edit ${label}`}
                               >
                                 <Edit2 className="w-3 h-3" />
                               </button>
