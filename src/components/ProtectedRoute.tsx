@@ -19,8 +19,18 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { session, status } = useAuthSession();
+  const userId = session?.user?.id;
+  const authCheckKey = [
+    status,
+    userId ?? '',
+    location.pathname,
+    location.search,
+    location.hash,
+  ].join('|');
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [authorizedCheckKey, setAuthorizedCheckKey] = useState<string | null>(null);
+  const isAuthorized =
+    status === 'authenticated' && authorizedCheckKey === authCheckKey;
   const bootTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Boot timeout safety net — if isLoading stays true for >8 seconds
@@ -52,80 +62,90 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     };
   }, [isLoading, location.hash, location.pathname, location.search, navigate]);
 
-  const checkAuthAndOnboarding = async () => {
-    let shouldSettleLoading = true;
-    try {
-      if (status === 'booting') {
-        setIsLoading(true);
-        shouldSettleLoading = false;
-        return;
-      }
+  useEffect(() => {
+    let isCurrentCheck = true;
 
-      if (!config.supabaseClient) {
-        navigate(
-          buildLoginRedirectPath(location.pathname, location.search, location.hash),
-          { replace: true }
-        );
-        return;
-      }
-
-      const user = session?.user;
-      if (!user) {
-        navigate(
-          buildLoginRedirectPath(location.pathname, location.search, location.hash),
-          { replace: true }
-        );
-        return;
-      }
-
-      const onboardingData = await fetchResolvedOnboardingProgress(
-        config.supabaseClient,
-        user.id
-      );
-
-      const isOnOnboardingPage = location.pathname.startsWith('/onboarding/');
-      const isOnFinancialLinkPage = location.pathname === FINANCIAL_LINK_ROUTE;
-      const isInvestorProfileAlias = location.pathname === '/investor-profile';
-      const financialLinkStatus = normalizeFinancialLinkStatus(
-        onboardingData?.financial_link_status
-      );
-
-      if (!onboardingData || !onboardingData.is_completed) {
-        if (
-          !isOnOnboardingPage &&
-          !(isInvestorProfileAlias && financialLinkStatus !== 'pending')
-        ) {
-          navigate(FINANCIAL_LINK_ROUTE, { replace: true });
-          return;
-        }
-
-        if (!isOnFinancialLinkPage && financialLinkStatus === 'pending') {
-          navigate(FINANCIAL_LINK_ROUTE, { replace: true });
-          return;
-        }
-      }
-
-      console.log('[ProtectedRoute] Authorization check passed');
-      setIsAuthorized(true);
-    } catch (error) {
-      console.error("Error checking auth:", error);
+    const redirectToLogin = () => {
       navigate(
         buildLoginRedirectPath(location.pathname, location.search, location.hash),
         { replace: true }
       );
-    } finally {
-      if (shouldSettleLoading) {
-        setIsLoading(false);
-      }
-    }
-  };
+    };
 
-  useEffect(() => {
-    if (status !== 'authenticated') {
-      setIsAuthorized(false);
-    }
+    const checkAuthAndOnboarding = async () => {
+      let shouldSettleLoading = true;
+      setIsLoading(true);
+      setAuthorizedCheckKey(null);
+
+      try {
+        if (status === 'booting') {
+          shouldSettleLoading = false;
+          return;
+        }
+
+        if (!config.supabaseClient) {
+          redirectToLogin();
+          return;
+        }
+
+        if (!userId) {
+          redirectToLogin();
+          return;
+        }
+
+        const onboardingData = await fetchResolvedOnboardingProgress(
+          config.supabaseClient,
+          userId
+        );
+
+        if (!isCurrentCheck) {
+          return;
+        }
+
+        const isOnOnboardingPage = location.pathname.startsWith('/onboarding/');
+        const isOnFinancialLinkPage = location.pathname === FINANCIAL_LINK_ROUTE;
+        const isInvestorProfileAlias = location.pathname === '/investor-profile';
+        const financialLinkStatus = normalizeFinancialLinkStatus(
+          onboardingData?.financial_link_status
+        );
+
+        if (!onboardingData || !onboardingData.is_completed) {
+          if (
+            !isOnOnboardingPage &&
+            !(isInvestorProfileAlias && financialLinkStatus !== 'pending')
+          ) {
+            navigate(FINANCIAL_LINK_ROUTE, { replace: true });
+            return;
+          }
+
+          if (!isOnFinancialLinkPage && financialLinkStatus === 'pending') {
+            navigate(FINANCIAL_LINK_ROUTE, { replace: true });
+            return;
+          }
+        }
+
+        console.log('[ProtectedRoute] Authorization check passed');
+        setAuthorizedCheckKey(authCheckKey);
+      } catch (error) {
+        if (!isCurrentCheck) {
+          return;
+        }
+
+        console.error("Error checking auth:", error);
+        redirectToLogin();
+      } finally {
+        if (isCurrentCheck && shouldSettleLoading) {
+          setIsLoading(false);
+        }
+      }
+    };
+
     checkAuthAndOnboarding();
-  }, [location.hash, location.pathname, location.search, navigate, session?.user?.id, status]);
+
+    return () => {
+      isCurrentCheck = false;
+    };
+  }, [authCheckKey, location.hash, location.pathname, location.search, navigate, status, userId]);
 
   if (isLoading) {
     return (

@@ -36,6 +36,33 @@ describe("ProtectedRoute", () => {
   let container: HTMLDivElement;
   let root: Root;
 
+  const renderProtectedRoute = (initialPath: string, routePath = initialPath) =>
+    React.createElement(
+      MemoryRouter,
+      { initialEntries: [initialPath] },
+      React.createElement(
+        Routes,
+        null,
+        React.createElement(Route, {
+          path: routePath,
+          element: React.createElement(
+            ProtectedRoute,
+            null,
+            React.createElement("div", null, "protected content")
+          ),
+        })
+      )
+    );
+
+  const createDeferred = <T,>() => {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>((promiseResolve) => {
+      resolve = promiseResolve;
+    });
+
+    return { promise, resolve };
+  };
+
   const flush = async () => {
     await act(async () => {
       await Promise.resolve();
@@ -62,24 +89,7 @@ describe("ProtectedRoute", () => {
 
   it("keeps showing the loading state while auth is booting", async () => {
     await act(async () => {
-      root.render(
-        React.createElement(
-          MemoryRouter,
-          { initialEntries: ["/profile"] },
-          React.createElement(
-            Routes,
-            null,
-            React.createElement(Route, {
-              path: "/profile",
-              element: React.createElement(
-                ProtectedRoute,
-                null,
-                React.createElement("div", null, "protected content")
-              ),
-            })
-          )
-        )
-      );
+      root.render(renderProtectedRoute("/profile"));
     });
 
     await flush();
@@ -98,24 +108,55 @@ describe("ProtectedRoute", () => {
     });
 
     await act(async () => {
-      root.render(
-        React.createElement(
-          MemoryRouter,
-          { initialEntries: ["/investor-profile"] },
-          React.createElement(
-            Routes,
-            null,
-            React.createElement(Route, {
-              path: "/investor-profile",
-              element: React.createElement(
-                ProtectedRoute,
-                null,
-                React.createElement("div", null, "protected content")
-              ),
-            })
-          )
-        )
-      );
+      root.render(renderProtectedRoute("/investor-profile"));
+    });
+
+    await flush();
+
+    expect(container.textContent).toContain("protected content");
+  });
+
+  it("hides protected content while a new authenticated session resolves", async () => {
+    authState.status = "authenticated";
+    authState.session = { user: { id: "user-123" } };
+    onboardingProgressMock.mockResolvedValueOnce({
+      current_step: 9,
+      is_completed: true,
+      financial_link_status: "completed",
+    });
+
+    await act(async () => {
+      root.render(renderProtectedRoute("/profile"));
+    });
+
+    await flush();
+
+    expect(container.textContent).toContain("protected content");
+
+    const nextProgress = createDeferred<{
+      current_step: number;
+      is_completed: boolean;
+      financial_link_status: string;
+    }>();
+    authState.session = { user: { id: "user-456" } };
+    onboardingProgressMock.mockReturnValueOnce(nextProgress.promise);
+
+    await act(async () => {
+      root.render(renderProtectedRoute("/profile"));
+    });
+
+    await flush();
+
+    expect(container.textContent).toContain("Loading...");
+    expect(container.textContent).not.toContain("protected content");
+
+    await act(async () => {
+      nextProgress.resolve({
+        current_step: 9,
+        is_completed: true,
+        financial_link_status: "completed",
+      });
+      await nextProgress.promise;
     });
 
     await flush();
