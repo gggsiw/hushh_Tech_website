@@ -51,6 +51,7 @@ Options:
   --token=TOKEN               Override GITHUB_TOKEN
   --api-base-url=URL          Override GITHUB_API_URL
   --report-path=PATH          Write a JSON report for debugging
+  --allow-empty-success       Treat a successful PR-Agent run with no published findings as valid
   --help                      Show this message
 
 Environment:
@@ -59,6 +60,7 @@ Environment:
   GITHUB_EVENT_PATH           Required unless --pr-number is provided
   PR_AGENT_STARTED_AT         Required ISO-8601 timestamp for the current run
   PR_AGENT_AUTHOR_LOGINS      Optional comma-separated bot logins
+  PR_AGENT_ALLOW_EMPTY_SUCCESS Optional true/false empty-output success policy
   PR_AGENT_MIN_BODY_LENGTH    Optional minimum non-empty body length (default: ${DEFAULT_MIN_BODY_LENGTH})
 `);
 }
@@ -260,6 +262,8 @@ async function main() {
   const eventPath = readArg("event-path") ?? process.env.GITHUB_EVENT_PATH ?? "";
   const prNumberArg = readArg("pr-number") ?? process.env.PR_NUMBER ?? "";
   const startedAtRaw = readArg("since") ?? process.env.PR_AGENT_STARTED_AT ?? "";
+  const allowEmptySuccess =
+    hasFlag("allow-empty-success") || process.env.PR_AGENT_ALLOW_EMPTY_SUCCESS === "true";
   const apiBaseUrl = trimTrailingSlash(
     readArg("api-base-url") ?? process.env.GITHUB_API_URL ?? "https://api.github.com"
   );
@@ -519,6 +523,7 @@ async function main() {
       qualifyingReviewComments: qualifyingReviewComments.length,
       visibleArtifacts: visibleArtifacts.length,
     },
+    allowEmptySuccess,
     visibleArtifacts,
     failureArtifacts: issueCommentFailures,
   };
@@ -539,6 +544,13 @@ async function main() {
   }
 
   if (visibleArtifacts.length === 0) {
+    if (allowEmptySuccess) {
+      logger.warn(
+        `PR agent completed without visible run-scoped review output. Treating this as success because the PR-Agent action can intentionally suppress no-issue reviews. Fetched ${issueComments.length} issue comments, ${reviews.length} reviews, and ${reviewComments.length} inline review comments after pagination.`
+      );
+      return;
+    }
+
     throw new Error(
       `PR agent completed without visible run-scoped review output. Fetched ${issueComments.length} issue comments, ${reviews.length} reviews, and ${reviewComments.length} inline review comments after pagination.`
     );

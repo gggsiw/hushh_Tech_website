@@ -5,6 +5,7 @@ const token = process.env.GITHUB_TOKEN || "";
 const repository = process.env.GITHUB_REPOSITORY || "";
 const reviewLaneName = process.env.REVIEW_LANE_NAME || "Hushh Signalkeeper";
 const semanticGuardName = process.env.SEMANTIC_GUARD_NAME || "Semantic PR Guard";
+const apiBaseUrl = trimTrailingSlash(process.env.GITHUB_API_URL || "https://api.github.com");
 const validationChecks = String(process.env.PR_VALIDATION_CHECKS || "")
   .split(",")
   .map((item) => item.trim())
@@ -36,8 +37,12 @@ if (!prNumber) {
 const [owner, repo] = repository.split("/");
 const markers = ["<!-- codex-signalkeeper-preflight -->", "<!-- codex-pr-intake -->"];
 const primaryMarker = markers[0];
-const apiBase = `https://api.github.com/repos/${owner}/${repo}`;
+const apiBase = `${apiBaseUrl}/repos/${owner}/${repo}`;
 const summaryPath = process.env.GITHUB_STEP_SUMMARY || "";
+
+function trimTrailingSlash(value) {
+  return String(value || "").replace(/\/+$/, "");
+}
 
 function sectionContent(markdown, heading) {
   const lines = String(markdown || "").split("\n");
@@ -426,6 +431,10 @@ function writeSummary(markdown) {
   fs.writeFileSync(summaryPath, `${markdown}\n`);
 }
 
+function warn(message) {
+  console.warn(`::warning::${message}`);
+}
+
 const livePr = await githubRequest(`/pulls/${prNumber}`);
 const files = await paginate((page) => `/pulls/${prNumber}/files?per_page=100&page=${page}`, 5);
 const comments = await paginate((page) => `/issues/${prNumber}/comments?per_page=100&page=${page}`, 5);
@@ -502,46 +511,57 @@ const existing = comments.find((comment) =>
   markers.some((candidate) => comment.body?.includes(candidate))
 );
 
-if (existing) {
-  await githubRequest(`/issues/comments/${existing.id}`, {
-    method: "PATCH",
-    body: { body },
-  });
-} else {
-  await githubRequest(`/issues/${prNumber}/comments`, {
-    method: "POST",
-    body: { body },
-  });
-}
+const summary = [
+  "# Signalkeeper Preflight",
+  `- Scope: ${repoScope}`,
+  `- Files changed: ${files.length}`,
+  `- Risk tags: ${changed.riskTags.length > 0 ? changed.riskTags.join(", ") : "docs-only"}`,
+  "",
+  "## Changed Surfaces",
+  ...areaLines,
+  "",
+  "## Author Intent",
+  `- Linked issue: ${formatField(hygiene.linkedIssue, "not stated")}`,
+  `- Acceptance criteria: ${formatField(hygiene.acceptanceCriteria, "not stated")}`,
+  `- Risk area: ${formatField(hygiene.riskArea, "not stated")}`,
+  `- Reviewer focus from author: ${formatField(hygiene.reviewerFocus, "not stated")}`,
+  `- Completed checks claimed by author: ${hygiene.checkedItems.length > 0 ? hygiene.checkedItems.slice(0, 5).join(", ") : "none checked"}`,
+  "",
+  "## Semantic PR Hygiene",
+  ...semanticSignals.map((line) => `- ${line}`),
+  "",
+  "## Reviewer Focus",
+  ...(focus.length > 0
+    ? focus.map((line) => `- ${line}`)
+    : ["- No extra preflight callouts beyond the standard validation suite."]),
+  "",
+  "## Validation Availability",
+  `- Advisory checks visible: ${checks.advisoryVisible.length > 0 ? checks.advisoryVisible.join(", ") : "none detected yet"}`,
+  `- Authoritative checks visible: ${checks.visibleValidation.length > 0 ? checks.visibleValidation.join(", ") : "none detected yet"}`,
+  `- ${availability.message}`,
+].join("\n");
 
-writeSummary(
-  [
-    "# Signalkeeper Preflight",
-    `- Scope: ${repoScope}`,
-    `- Files changed: ${files.length}`,
-    `- Risk tags: ${changed.riskTags.length > 0 ? changed.riskTags.join(", ") : "docs-only"}`,
-    "",
-    "## Changed Surfaces",
-    ...areaLines,
-    "",
-    "## Author Intent",
-    `- Linked issue: ${formatField(hygiene.linkedIssue, "not stated")}`,
-    `- Acceptance criteria: ${formatField(hygiene.acceptanceCriteria, "not stated")}`,
-    `- Risk area: ${formatField(hygiene.riskArea, "not stated")}`,
-    `- Reviewer focus from author: ${formatField(hygiene.reviewerFocus, "not stated")}`,
-    `- Completed checks claimed by author: ${hygiene.checkedItems.length > 0 ? hygiene.checkedItems.slice(0, 5).join(", ") : "none checked"}`,
-    "",
-    "## Semantic PR Hygiene",
-    ...semanticSignals.map((line) => `- ${line}`),
-    "",
-    "## Reviewer Focus",
-    ...(focus.length > 0
-      ? focus.map((line) => `- ${line}`)
-      : ["- No extra preflight callouts beyond the standard validation suite."]),
-    "",
-    "## Validation Availability",
-    `- Advisory checks visible: ${checks.advisoryVisible.length > 0 ? checks.advisoryVisible.join(", ") : "none detected yet"}`,
-    `- Authoritative checks visible: ${checks.visibleValidation.length > 0 ? checks.visibleValidation.join(", ") : "none detected yet"}`,
-    `- ${availability.message}`,
-  ].join("\n")
-);
+writeSummary(summary);
+
+try {
+  if (existing) {
+    await githubRequest(`/issues/comments/${existing.id}`, {
+      method: "PATCH",
+      body: { body },
+    });
+  } else {
+    await githubRequest(`/issues/${prNumber}/comments`, {
+      method: "POST",
+      body: { body },
+    });
+  }
+} catch (error) {
+  warn(
+    `Signalkeeper Preflight could not publish its sticky PR comment: ${
+      error?.message || String(error)
+    }`
+  );
+  warn(
+    "Signalkeeper Preflight is advisory; the run summary was still written and this comment publish failure will not fail the check."
+  );
+}
