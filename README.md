@@ -66,6 +66,7 @@ See:
 ```bash
 npm ci
 npm run test
+npm run lint:ci
 npm run security:gitleaks
 ```
 
