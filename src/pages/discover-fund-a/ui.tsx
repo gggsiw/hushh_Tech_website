@@ -23,9 +23,9 @@ const FieldRow = ({
 );
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400 font-medium mb-2">
+  <h2 className="text-[10px] uppercase tracking-[0.2em] text-gray-400 font-medium mb-2">
     {children}
-  </p>
+  </h2>
 );
 
 const FeatureCard = ({

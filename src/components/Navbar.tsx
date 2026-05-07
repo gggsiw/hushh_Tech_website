@@ -225,7 +225,7 @@ export default function Navbar() {
             </div>
             {/* Brand Text - Stacked Layout */}
             <div className="flex flex-col">
-              <h1 className="text-[18px] font-bold leading-none tracking-tight text-gray-900">Hushh</h1>
+              <span className="text-[18px] font-bold leading-none tracking-tight text-gray-900">Hushh</span>
               <span className="text-[13px] text-gray-500 font-medium mt-0.5">Technologies</span>
             </div>
           </Link>

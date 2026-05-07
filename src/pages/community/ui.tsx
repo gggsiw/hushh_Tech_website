@@ -144,9 +144,9 @@ export default function CommunityPage() {
                   </div>
 
                   {/* title */}
-                  <h3 className="text-[15px] font-semibold text-black leading-snug mb-2 group-hover:text-hushh-blue transition-colors line-clamp-2">
+                  <h2 className="text-[15px] font-semibold text-black leading-snug mb-2 group-hover:text-hushh-blue transition-colors line-clamp-2">
                     {post.title}
-                  </h3>
+                  </h2>
 
                   {/* description */}
                   <p className="text-[12px] text-gray-400 font-light leading-relaxed line-clamp-2 mb-3">
