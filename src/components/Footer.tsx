@@ -75,13 +75,13 @@ export default function Footer() {
               <div className="space-y-0">
                 <a 
                   href="/about/leadership" 
-                  className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group block"
+                  className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group block transition-colors duration-200"
                 >
                   About Us
                 </a>
                 <a 
                   href="/discover-fund-a" 
-                  className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group block"
+                  className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group block transition-colors duration-200"
                 >
                   Fund A
                 </a>
@@ -89,19 +89,19 @@ export default function Footer() {
                   href="https://www.hushh.ai/solutions" 
                   target="_blank" 
                   rel="noopener noreferrer" 
-                  className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group block"
+                  className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group block transition-colors duration-200"
                 >
                   Solutions
                 </a>
                 <a 
                   href="/benefits" 
-                  className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group block"
+                  className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group block transition-colors duration-200"
                 >
                   Benefits
                 </a>
                 <a 
                   href="/careers" 
-                  className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group block"
+                  className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group block transition-colors duration-200"
                 >
                   Careers
                 </a>
@@ -109,25 +109,25 @@ export default function Footer() {
               <div className="space-y-0">
                 <a 
                   href="/community" 
-                  className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group block"
+                  className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group block transition-colors duration-200"
                 >
                   Community
                 </a>
                 <a 
                   href="/faq" 
-                  className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group block"
+                  className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group block transition-colors duration-200"
                 >
                   FAQ
                 </a>
                 <a 
                   href="/contact" 
-                  className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group block"
+                  className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group block transition-colors duration-200"
                 >
                   Contact
                 </a>
                 <a 
                   href="/kyc-verification" 
-                  className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group block"
+                  className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group block transition-colors duration-200"
                 >
                   KYC Verification
                 </a>
@@ -144,25 +144,25 @@ export default function Footer() {
           <nav className="flex flex-col gap-0 border-l border-[#1F2937] pl-4">
             <a 
               href="/privacy-policy" 
-              className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group"
+              className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group transition-colors duration-200"
             >
               Website Privacy Policy
             </a>
             <a 
               href="/eu-uk-jobs-privacy-policy" 
-              className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group"
+              className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group transition-colors duration-200"
             >
               EU and UK Privacy Policies
             </a>
             <a 
               href="/california-privacy-policy" 
-              className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group"
+              className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group transition-colors duration-200"
             >
               California Privacy Policy
             </a>
             <a 
               href="/carrer-privacy-policy" 
-              className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group"
+              className="py-2 text-gray-300 hover:text-white text-base font-medium flex items-center justify-between group transition-colors duration-200"
             >
               Careers Site Privacy Notice
             </a>
