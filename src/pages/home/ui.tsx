@@ -6,6 +6,7 @@ import HushhTechFooter, {
 import HushhTechCta, {
   HushhTechCtaVariant,
 } from "../../components/hushh-tech-cta/HushhTechCta";
+import { activateOnKeyboard } from "../../utils/keyboardNavigation";
 
 const playfair = { fontFamily: "'Playfair Display', serif" };
 
@@ -175,7 +176,7 @@ export default function HomePage() {
                     tabIndex={0}
                     aria-label="View performance details"
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") onNavigate("/discover-fund-a");
+                      activateOnKeyboard(e, () => onNavigate("/discover-fund-a"));
                     }}
                   >
                     <span className="text-xs font-medium tracking-wide uppercase text-hushh-blue">

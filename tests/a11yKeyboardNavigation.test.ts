@@ -13,7 +13,24 @@ import {
 } from "vitest";
 
 import { SearchableSelect } from "../src/components/onboarding/SearchableSelect";
+import LanguageSwitcher from "../src/components/LanguageSwitcher";
 import { useModalKeyboardNavigation } from "../src/hooks/useModalKeyboardNavigation";
+
+const languageMock = vi.hoisted(() => ({
+  currentLanguage: "en",
+  changeLanguage: vi.fn(),
+}));
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    i18n: {
+      get language() {
+        return languageMock.currentLanguage;
+      },
+      changeLanguage: languageMock.changeLanguage,
+    },
+  }),
+}));
 
 function ModalHarness() {
   const [isOpen, setIsOpen] = useState(false);
@@ -93,6 +110,10 @@ describe("keyboard accessibility helpers", () => {
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
+    languageMock.currentLanguage = "en";
+    languageMock.changeLanguage.mockImplementation((language: string) => {
+      languageMock.currentLanguage = language;
+    });
   });
 
   afterEach(async () => {
@@ -172,6 +193,86 @@ describe("keyboard accessibility helpers", () => {
     });
 
     expect(container.querySelector("div[role='dialog']")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("pulls focus back into an open modal when Tab starts outside", async () => {
+    await act(async () => {
+      root.render(React.createElement(ModalHarness));
+    });
+
+    const trigger = container.querySelector("button");
+    trigger?.focus();
+
+    await act(async () => {
+      trigger?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    await act(async () => {
+      vi.runOnlyPendingTimers();
+    });
+
+    const outsideButton = document.createElement("button");
+    outsideButton.textContent = "Outside";
+    document.body.appendChild(outsideButton);
+    outsideButton.focus();
+
+    await act(async () => {
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Tab", bubbles: true }),
+      );
+    });
+
+    const buttons = Array.from(container.querySelectorAll("div[role='dialog'] button"));
+    expect(document.activeElement).toBe(buttons[0]);
+    outsideButton.remove();
+  });
+
+  it("opens the language menu with the keyboard and supports arrow navigation", async () => {
+    await act(async () => {
+      root.render(React.createElement(LanguageSwitcher));
+    });
+
+    const trigger = container.querySelector("button[aria-label='Select language']");
+    expect(trigger).toBeInstanceOf(HTMLButtonElement);
+    trigger?.focus();
+
+    await act(async () => {
+      trigger?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+      );
+    });
+
+    await act(async () => {
+      vi.runOnlyPendingTimers();
+    });
+
+    const options = Array.from(container.querySelectorAll("[role='menuitemradio']"));
+    expect(options).toHaveLength(4);
+    expect(trigger?.getAttribute("aria-expanded")).toBe("true");
+    expect(document.activeElement).toBe(options[0]);
+
+    await act(async () => {
+      options[0].dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+      );
+    });
+    expect(document.activeElement).toBe(options[1]);
+
+    await act(async () => {
+      options[1].dispatchEvent(
+        new KeyboardEvent("keydown", { key: "End", bubbles: true }),
+      );
+    });
+    expect(document.activeElement).toBe(options[3]);
+
+    await act(async () => {
+      options[3].dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
+    });
+    expect(languageMock.changeLanguage).toHaveBeenCalledWith("fr");
+    expect(container.querySelector("[role='menu']")).toBeNull();
     expect(document.activeElement).toBe(trigger);
   });
 

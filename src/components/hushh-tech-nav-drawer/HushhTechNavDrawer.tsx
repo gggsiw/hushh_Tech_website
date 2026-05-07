@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import hushhLogo from "../images/Hushhogo.png";
 import { useAuthSession } from "../../auth/AuthSessionProvider";
 import { useModalKeyboardNavigation } from "../../hooks/useModalKeyboardNavigation";
+import { moveFocusWithin } from "../../utils/keyboardNavigation";
 
 interface NavItem {
   icon: string;
@@ -83,6 +84,10 @@ const HushhTechNavDrawer: React.FC<HushhTechNavDrawerProps> = ({
     navigate("/login");
   };
 
+  const handleDrawerKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    moveFocusWithin(drawerRef.current, event);
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -91,8 +96,9 @@ const HushhTechNavDrawer: React.FC<HushhTechNavDrawerProps> = ({
       className="fixed inset-0 z-[100] bg-white flex flex-col selection:bg-hushh-blue selection:text-white"
       role="dialog"
       aria-modal="true"
-      aria-label="Navigation menu"
+      aria-labelledby="hushh-nav-drawer-title"
       tabIndex={-1}
+      onKeyDown={handleDrawerKeyDown}
     >
       {/* ── Header ── */}
       <div className="px-6 py-6 flex justify-between items-center">
@@ -100,7 +106,10 @@ const HushhTechNavDrawer: React.FC<HushhTechNavDrawerProps> = ({
           <div className="w-10 h-10 border border-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
             <img src={hushhLogo} alt="Hushh" className="w-5 h-5 object-contain" />
           </div>
-          <span className="text-[0.7rem] font-bold tracking-[0.2em] uppercase text-gray-900 pt-0.5">
+          <span
+            id="hushh-nav-drawer-title"
+            className="text-[0.7rem] font-bold tracking-[0.2em] uppercase text-gray-900 pt-0.5"
+          >
             hushh technologies
           </span>
         </div>
