@@ -317,7 +317,7 @@ export const InvestmentCalculator: React.FC = () => {
                         </ResponsiveContainer>
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                             <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-bold">Total</span>
-                            <span className="text-lg font-bold text-white">₹{parseInt(amount).toLocaleString()}</span>
+                            <span className="text-lg font-bold text-white">₹{(Number(amount) || 0).toLocaleString()}</span>
                         </div>
                     </div>
 
