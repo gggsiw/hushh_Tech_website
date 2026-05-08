@@ -326,7 +326,7 @@ export default function Navbar() {
           {lastUpdated && (
             <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-              <span className="text-[9px] font-medium text-gray-500">
+              <span className="text-[9px] font-medium text-gray-700">
                 {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
