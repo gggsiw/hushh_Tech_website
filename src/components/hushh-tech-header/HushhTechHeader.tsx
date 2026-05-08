@@ -21,6 +21,8 @@ const TickerChip = ({ quote, isLoading }: { quote: StockQuote; isLoading?: boole
         <img
           src={quote.logo}
           alt={`${quote.displaySymbol} logo`}
+          width="14"
+          height="14"
           className="w-3.5 h-3.5 object-contain"
           loading="lazy"
           onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
@@ -79,6 +81,8 @@ const HushhTechHeader: React.FC<HushhTechHeaderProps> = ({
               <img
                 src={hushhLogo}
                 alt="Hushh Logo"
+                width="44"
+                height="44"
                 className="w-11 h-11 object-contain"
               />
             </div>
