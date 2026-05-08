@@ -6,7 +6,6 @@ import HushhTechFooter, {
 import HushhTechCta, {
   HushhTechCtaVariant,
 } from "../../components/hushh-tech-cta/HushhTechCta";
-import { activateOnKeyboard } from "../../utils/keyboardNavigation";
 
 const playfair = { fontFamily: "'Playfair Display', serif" };
 
@@ -169,15 +168,11 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  <div
-                    className="pt-4 border-t border-white/10 flex items-center justify-between group cursor-pointer"
+                  <button
+                    type="button"
+                    className="w-full pt-4 border-t border-white/10 flex items-center justify-between group cursor-pointer bg-transparent text-left"
                     onClick={() => onNavigate("/discover-fund-a")}
-                    role="button"
-                    tabIndex={0}
                     aria-label="View performance details"
-                    onKeyDown={(e) => {
-                      activateOnKeyboard(e, () => onNavigate("/discover-fund-a"));
-                    }}
                   >
                     <span className="text-xs font-medium tracking-wide uppercase text-hushh-blue">
                       Performance Details
@@ -185,7 +180,7 @@ export default function HomePage() {
                     <span className="material-symbols-outlined thin-icon text-sm text-hushh-blue group-hover:translate-x-1 transition-transform">
                       arrow_forward
                     </span>
-                  </div>
+                  </button>
                 </div>
               </div>
             </div>
