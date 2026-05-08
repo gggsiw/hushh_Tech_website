@@ -131,4 +131,46 @@ describe("LanguageSwitcher keyboard accessibility", () => {
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
     expect(document.activeElement).toBe(trigger);
   });
+
+  it("closes with document-level Escape when the menu is open", async () => {
+    const trigger = await renderSwitcher();
+
+    trigger.focus();
+    await keyDown(trigger, "ArrowDown");
+
+    expect(container.querySelector("[role='menu']")).not.toBeNull();
+
+    await act(async () => {
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+    });
+
+    expect(i18nMock.changeLanguage).not.toHaveBeenCalled();
+    expect(container.querySelector("[role='menu']")).toBeNull();
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("keeps the menu open when Escape belongs to another focused component", async () => {
+    const trigger = await renderSwitcher();
+    const modalButton = document.createElement("button");
+    document.body.appendChild(modalButton);
+
+    trigger.focus();
+    await keyDown(trigger, "ArrowDown");
+    modalButton.focus();
+
+    await act(async () => {
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+    });
+
+    expect(container.querySelector("[role='menu']")).not.toBeNull();
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(document.activeElement).toBe(modalButton);
+
+    modalButton.remove();
+  });
 });

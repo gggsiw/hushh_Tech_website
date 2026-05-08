@@ -58,6 +58,23 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ variant = 'light' }
     optionRefs.current[activeIndex]?.focus();
   }, [activeIndex, isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleDocumentKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (!dropdownRef.current?.contains(document.activeElement)) return;
+
+      event.preventDefault();
+      closeDropdown(true);
+    };
+
+    document.addEventListener('keydown', handleDocumentKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleDocumentKeyDown);
+    };
+  }, [closeDropdown, isOpen]);
+
   const changeLanguage = React.useCallback((langCode: string) => {
     i18n.changeLanguage(langCode);
     
