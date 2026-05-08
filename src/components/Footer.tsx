@@ -183,19 +183,19 @@ export default function Footer() {
             rel="noopener noreferrer" 
             className="w-10 h-10 rounded-full bg-[#1F2937] flex items-center justify-center hover:bg-[#135bec] transition-colors group"
           >
-            <FaGlobe className="text-gray-400 group-hover:text-white text-[16px]" />
+            <FaGlobe className="text-gray-400 group-hover:text-white text-base" />
           </a>
           <a 
             href="mailto:support@hushh.ai" 
             className="w-10 h-10 rounded-full bg-[#1F2937] flex items-center justify-center hover:bg-[#135bec] transition-colors group"
           >
-            <FaAt className="text-gray-400 group-hover:text-white text-[16px]" />
+            <FaAt className="text-gray-400 group-hover:text-white text-base" />
           </a>
           <a 
             href="/community" 
             className="w-10 h-10 rounded-full bg-[#1F2937] flex items-center justify-center hover:bg-[#135bec] transition-colors group"
           >
-            <FaRss className="text-gray-400 group-hover:text-white text-[16px]" />
+            <FaRss className="text-gray-400 group-hover:text-white text-base" />
           </a>
         </div>
 
