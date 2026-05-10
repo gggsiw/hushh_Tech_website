@@ -4,7 +4,7 @@
  * Slides in from right, covers entire viewport.
  */
 import React, { useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import hushhLogo from "../images/Hushhogo.png";
 import { useAuthSession } from "../../auth/AuthSessionProvider";
 import { useModalKeyboardNavigation } from "../../hooks/useModalKeyboardNavigation";
@@ -49,6 +49,7 @@ const HushhTechNavDrawer: React.FC<HushhTechNavDrawerProps> = ({
   onClose,
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { status, signOut } = useAuthSession();
   const isAuthenticated = status === "authenticated";
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -87,6 +88,8 @@ const HushhTechNavDrawer: React.FC<HushhTechNavDrawerProps> = ({
   const handleDrawerKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     moveFocusWithin(drawerRef.current, event);
   };
+
+  const isActive = (path: string) => location.pathname === path;
 
   if (!isOpen) return null;
 
@@ -139,6 +142,7 @@ const HushhTechNavDrawer: React.FC<HushhTechNavDrawerProps> = ({
               <button
                 key={item.path}
                 onClick={() => handleNavigate(item.path)}
+                aria-current={isActive(item.path) ? "page" : undefined}
                 className="group flex items-center gap-3 py-3 px-3 border border-gray-100 hover:border-hushh-blue/20 bg-white hover:bg-hushh-blue/5 transition-colors rounded-xl w-full text-left"
               >
                 <div className="w-7 h-7 rounded-full bg-gray-50 group-hover:bg-hushh-blue/10 border border-transparent group-hover:border-hushh-blue/20 flex items-center justify-center transition-all shrink-0">
@@ -182,6 +186,7 @@ const HushhTechNavDrawer: React.FC<HushhTechNavDrawerProps> = ({
               <button
                 key={item.path}
                 onClick={() => handleNavigate(item.path)}
+                aria-current={isActive(item.path) ? "page" : undefined}
                 className="group flex items-center gap-3 py-3 px-3 border border-gray-100 hover:border-hushh-blue/20 bg-white hover:bg-hushh-blue/5 transition-colors rounded-xl w-full text-left"
               >
                 <div className="w-7 h-7 rounded-full bg-gray-50 group-hover:bg-hushh-blue/10 border border-transparent group-hover:border-hushh-blue/20 flex items-center justify-center transition-all shrink-0">
