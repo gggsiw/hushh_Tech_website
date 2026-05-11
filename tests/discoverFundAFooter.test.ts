@@ -109,4 +109,19 @@ describe("FundA footer shell", () => {
     expect(footer?.getAttribute("data-active-tab")).toBe("fund-a");
     expect(footer?.parentElement?.className).toContain("lg:hidden");
   });
+
+  it("marks feature card icons as decorative", async () => {
+    await act(async () => {
+      root.render(React.createElement(FundA));
+    });
+
+    const featureIcons = Array.from(
+      container.querySelectorAll('[data-testid="feature-card-icon"]'),
+    );
+
+    expect(featureIcons.length).toBeGreaterThan(0);
+    featureIcons.forEach((icon) => {
+      expect(icon.getAttribute("aria-hidden")).toBe("true");
+    });
+  });
 });

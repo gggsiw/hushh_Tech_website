@@ -52,7 +52,11 @@ const FeatureCard = ({
 }) => (
   <div className="flex items-start gap-4 border border-gray-200 rounded-2xl p-5 hover:border-gray-300 hover:bg-gray-50/50 transition-all">
     <div className="w-11 h-11 rounded-full border border-gray-200 flex items-center justify-center shrink-0 bg-white">
-      <span className={`material-symbols-outlined ${iconColor} !text-[1.15rem]`}>
+      <span
+        aria-hidden="true"
+        data-testid="feature-card-icon"
+        className={`material-symbols-outlined ${iconColor} !text-[1.15rem]`}
+      >
         {icon}
       </span>
     </div>
@@ -81,7 +85,11 @@ const FeatureHighlightTile = ({
 }) => (
   <div className="flex flex-col items-center text-center gap-3 border border-gray-200/70 rounded-2xl p-5 bg-white hover:border-gray-300 hover:bg-gray-50/40 transition-all">
     <div className="w-12 h-12 rounded-full border border-gray-200/70 flex items-center justify-center bg-gray-50">
-      <span className={`material-symbols-outlined ${iconColor} !text-[1.15rem]`}>
+      <span
+        aria-hidden="true"
+        data-testid="feature-card-icon"
+        className={`material-symbols-outlined ${iconColor} !text-[1.15rem]`}
+      >
         {icon}
       </span>
     </div>
