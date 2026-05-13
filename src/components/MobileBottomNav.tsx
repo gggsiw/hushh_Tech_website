@@ -95,7 +95,7 @@ const itemVariants = {
 };
 
 // Motion component for the nav container
-const MotionBox = motion(Box);
+const MotionBox = motion.create(Box);
 
 const MobileBottomNav: React.FC = () => {
   const navigate = useNavigate();
