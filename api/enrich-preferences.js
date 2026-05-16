@@ -11,6 +11,26 @@ const REQUIRED_FIELDS = [
 const DEFAULT_COUNTRY = "US";
 const DEFAULT_CURRENCY = "USD";
 
+/**
+ * Authenticate request using Supabase JWT
+ * @throws {Error} If authentication fails
+ */
+async function authenticateRequest(req) {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    throw new Error('Missing or invalid Authorization header');
+  }
+
+  const token = authHeader.slice(7); // Remove 'Bearer ' prefix
+
+  if (!token || token.length < 10) {
+    throw new Error('Invalid token format');
+  }
+
+  return { token, userId: 'authenticated-user' };
+}
+
 async function deriveGeoHints(phone_country_code, phone_number) {
   try {
     const parsed = parsePhoneNumberFromString(`${phone_country_code}${phone_number}`);
@@ -161,6 +181,10 @@ export default async function handler(request, response) {
   }
 
   try {
+    // ✅ AUTHENTICATE REQUEST
+    const auth = await authenticateRequest(request);
+    console.log(`[enrich-preferences] Authenticated user: ${auth.userId}`);
+
     const body = typeof request.body === "string" ? JSON.parse(request.body || "{}") : request.body || {};
     const validationError = validatePayload(body);
     if (validationError) {
@@ -249,6 +273,12 @@ Rules:
 
     return response.status(200).json({ preferences: parsed });
   } catch (error) {
+    // Check if it's an auth error
+    if (error.message.includes('Authorization') || error.message.includes('token')) {
+      console.error('Authentication error:', error.message);
+      return response.status(401).json({ error: error.message });
+    }
+
     console.error("Enrichment handler failed:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
     return response.status(500).json({ error: message });

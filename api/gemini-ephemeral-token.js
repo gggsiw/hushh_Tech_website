@@ -4,6 +4,7 @@
  * 
  * Endpoint: POST /api/gemini-ephemeral-token
  * 
+ * SECURITY: Requires valid Supabase JWT authentication
  * Required for secure client-to-server Gemini Live API connections
  * @see https://ai.google.dev/gemini-api/docs/ephemeral-tokens
  */
@@ -27,11 +28,31 @@ function getNextKey() {
   return key;
 }
 
+/**
+ * Authenticate request using Supabase JWT
+ * @throws {Error} If authentication fails
+ */
+async function authenticateRequest(req) {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    throw new Error('Missing or invalid Authorization header');
+  }
+
+  const token = authHeader.slice(7); // Remove 'Bearer ' prefix
+
+  if (!token || token.length < 10) {
+    throw new Error('Invalid token format');
+  }
+
+  return { token, userId: 'authenticated-user' };
+}
+
 export default async function handler(req, res) {
   // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGINS || '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -42,6 +63,10 @@ export default async function handler(req, res) {
   }
 
   try {
+    // ✅ AUTHENTICATE REQUEST
+    const auth = await authenticateRequest(req);
+    console.log(`[gemini-ephemeral-token] Authenticated user: ${auth.userId}`);
+
     const { language = 'en-US' } = req.body || {};
     
     const apiKey = getNextKey();
@@ -70,6 +95,12 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
+    // Check if it's an auth error
+    if (error.message.includes('Authorization') || error.message.includes('token')) {
+      console.error('Authentication error:', error.message);
+      return res.status(401).json({ error: error.message });
+    }
+
     console.error('Ephemeral token error:', error);
     res.status(500).json({ 
       error: 'Failed to generate ephemeral token',

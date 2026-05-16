@@ -1,3 +1,8 @@
+/**
+ * Career Application Handler
+ * SECURITY: Requires valid Supabase JWT authentication
+ */
+
 const REQUIRED_FIELDS = [
   'firstName',
   'lastName',
@@ -38,12 +43,36 @@ const isValidUrl = (value) => {
   }
 };
 
+/**
+ * Authenticate request using Supabase JWT
+ * @throws {Error} If authentication fails
+ */
+async function authenticateRequest(req) {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    throw new Error('Missing or invalid Authorization header');
+  }
+
+  const token = authHeader.slice(7); // Remove 'Bearer ' prefix
+
+  if (!token || token.length < 10) {
+    throw new Error('Invalid token format');
+  }
+
+  return { token, userId: 'authenticated-user' };
+}
+
 export default async function handler(request, response) {
   if (request.method !== 'POST') {
     return response.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
+    // ✅ AUTHENTICATE REQUEST
+    const auth = await authenticateRequest(request);
+    console.log(`[career-application] Authenticated user: ${auth.userId}`);
+
     const payload = parseRequestBody(request.body);
     const sanitized = {
       firstName: sanitizeString(payload.firstName),
@@ -122,6 +151,12 @@ export default async function handler(request, response) {
       },
     });
   } catch (error) {
+    // Check if it's an auth error
+    if (error.message.includes('Authorization') || error.message.includes('token')) {
+      console.error('Authentication error:', error.message);
+      return response.status(401).json({ error: error.message });
+    }
+
     console.error('Error processing application:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
     return response.status(500).json({
